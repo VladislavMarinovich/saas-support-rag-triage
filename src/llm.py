@@ -1,4 +1,4 @@
-"""LLM client for Polaris synthetic-data generation (Google Gemini via AI Studio).
+"""LLM client for Polaris synthetic-data generation (Anthropic Claude).
 
 Reused by the knowledge-base builder and the ticket generator. The API key is
 read from the gitignored `.env` file — never hard-code it here.
@@ -6,36 +6,35 @@ read from the gitignored `.env` file — never hard-code it here.
 
 import os
 
+import anthropic
 from dotenv import load_dotenv
-from google import genai
 
 load_dotenv()
 
-# Fast, cheap, current-gen model — good for generating KB articles and tickets.
-# Pinned (not a *-latest alias) so the generation is reproducible.
-# If this model id errors, run `list_models()` below to see what's available.
-DEFAULT_MODEL = "gemini-3.5-flash"
+# Cheap, fast model — good for generating KB articles and tickets at volume.
+# Swap to "claude-sonnet-5" if you want higher-quality prose (higher cost).
+DEFAULT_MODEL = "claude-haiku-4-5"
 
-_api_key = os.environ.get("GOOGLE_API_KEY")
+_api_key = os.environ.get("ANTHROPIC_API_KEY")
 if not _api_key or _api_key == "PASTE_YOUR_KEY_HERE":
     raise RuntimeError(
-        "GOOGLE_API_KEY is not set. Copy .env.example to .env and paste your key "
-        "(get one at https://aistudio.google.com)."
+        "ANTHROPIC_API_KEY is not set. Add it to your .env file "
+        "(create a key at https://console.anthropic.com)."
     )
 
-client = genai.Client(api_key=_api_key)
+# The SDK auto-retries 429 / 5xx with exponential backoff; bump the default (2)
+# for robustness during bulk generation.
+client = anthropic.Anthropic(api_key=_api_key, max_retries=5)
 
 
-def generate(prompt: str, model: str = DEFAULT_MODEL) -> str:
-    """Send a prompt to Gemini and return the plain-text response."""
-    response = client.models.generate_content(model=model, contents=prompt)
-    return response.text
-
-
-def list_models() -> None:
-    """Print available model ids (use if DEFAULT_MODEL errors)."""
-    for m in client.models.list():
-        print(m.name)
+def generate(prompt: str, model: str = DEFAULT_MODEL, max_tokens: int = 4096) -> str:
+    """Send a prompt to Claude and return the plain-text response."""
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")
 
 
 if __name__ == "__main__":
