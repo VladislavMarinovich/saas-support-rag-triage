@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.3.3",
     "pinecone>=7.3.0",
     "python-dotenv>=1.2.1",
+    "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
 ]
 
