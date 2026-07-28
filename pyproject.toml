@@ -11,4 +11,11 @@ dependencies = [
     "matplotlib>=3.9.4",
     "pandas>=2.3.3",
     "python-dotenv>=1.2.1",
+    "seaborn>=0.13.2",
+]
+
+[dependency-groups]
+dev = [
+    "nbconvert>=7.17.1",
+    "nbformat>=5.10.4",
 ]
