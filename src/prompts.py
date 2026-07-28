@@ -58,6 +58,13 @@ def build_prompt(spec: TicketSpec) -> str:
         if spec.priority in ("high", "critical")
         else ""
     )
+    # Ground the plan so the model references the real tier instead of inventing
+    # names like "standard" or "mid-tier" (seen in validation).
+    plan_line = (
+        f"Your Polaris plan is {spec.plan.capitalize()} (the only tiers are "
+        f"Starter, Growth, Enterprise). If you mention your plan, use that exact "
+        f"name — never invent a tier."
+    )
 
     return f"""You are simulating a CUSTOMER writing an inbound support ticket to Polaris.
 
@@ -69,6 +76,7 @@ Write it as {_CHANNEL[spec.channel]}.
 Tone: sound {_TONE[spec.sentiment]}.
 Length: {_LENGTH[spec.length_band]}.
 {formality}
+{plan_line}
 {urgency}
 
 Realism rules:
