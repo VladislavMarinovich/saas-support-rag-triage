@@ -16,7 +16,7 @@ import argparse
 import json
 from pathlib import Path
 
-from src.sampler import sample_batch
+from src.sampler import sample_batch, sample_month
 from src.prompts import build_prompt
 
 
@@ -46,11 +46,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=1, help="how many tickets")
     ap.add_argument("--seed", type=int, default=7, help="sampler seed (reproducible)")
+    ap.add_argument("--month", type=str, default=None,
+                    help="restrict created_at to a month, format YYYY-MM (e.g. 2026-01)")
     ap.add_argument("--out", type=str, default=None, help="JSONL output path")
     ap.add_argument("--dry", action="store_true", help="print prompts only, no LLM call")
     args = ap.parse_args()
 
-    specs = sample_batch(args.n, seed=args.seed)
+    if args.month:
+        year, month = (int(x) for x in args.month.split("-"))
+        specs = sample_month(year, month, args.n, seed=args.seed)
+    else:
+        specs = sample_batch(args.n, seed=args.seed)
 
     if args.dry:
         for spec in specs:
@@ -64,8 +70,18 @@ def main() -> None:
 
     records = []
     for spec in specs:
-        raw = generate(build_prompt(spec), max_tokens=512)
-        subject, body = _parse_llm_json(raw)
+        # One retry, then skip — a single bad JSON reply must not abort a big run.
+        for attempt in range(2):
+            try:
+                raw = generate(build_prompt(spec), max_tokens=512)
+                subject, body = _parse_llm_json(raw)
+                break
+            except Exception as e:
+                if attempt == 1:
+                    print(f"skip {spec.ticket_id}: {e}")
+                    subject = body = None
+        if body is None:
+            continue
         rec = spec.to_record()
         rec["subject"] = subject
         rec["body"] = body
