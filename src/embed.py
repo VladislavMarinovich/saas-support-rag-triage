@@ -37,6 +37,7 @@ def embed_texts(texts: list[str], model: str | None = None) -> list[list[float]]
     model = model or EMBED_MODEL
     vectors: list[list[float]] = []
     batch_size = 100  # Vertex caps how many inputs per request
+    # send the texts in batches, collecting one vector per input
     for i in range(0, len(texts), batch_size):
         resp = _vertex().models.embed_content(model=model, contents=texts[i:i + batch_size])
         vectors.extend(e.values for e in resp.embeddings)

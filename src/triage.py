@@ -29,6 +29,7 @@ def get_models() -> dict:
     """
     global _models
     if _models is None:
+        # features = the cached ticket embeddings; train one model per label
         X, tickets = build_features()
         _models = {}
         for label in LABELS:
@@ -41,6 +42,7 @@ def get_models() -> dict:
 
 def predict(text: str) -> dict:
     """Predict the 5 triage labels for a new ticket from its text."""
+    # turn the ticket into its embedding, then run each label's classifier on it
     vec = np.asarray(embed_texts([text]), dtype="float32")
     models = get_models()
     return {label: str(models[label].predict(vec)[0]) for label in LABELS}
@@ -49,6 +51,7 @@ def predict(text: str) -> dict:
 def triage(text: str) -> dict:
     """Classify the ticket, then answer from the KB or escalate."""
     labels = predict(text)
+    # gate on the predicted routing: KB-deflectable -> RAG answers; else escalate
     if labels["routing"] == "kb_autoresolve":
         reply, _hits = rag_answer(text)
         action = "answered_from_kb"

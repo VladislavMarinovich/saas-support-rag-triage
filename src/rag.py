@@ -32,8 +32,11 @@ Answer:"""
 
 def answer(question: str, top_k: int = 3):
     """Retrieve top_k chunks and return (llm_answer, hits)."""
+    # 1. retrieve the most relevant KB chunks for the question
     hits = search(question, top_k=top_k)
+    # 2. stitch those chunks into a single context block for the prompt
     context = "\n\n".join(f"[{cid}] {text}" for cid, _score, text in hits)
+    # 3. LLM answers grounded in that context — or refuses if it doesn't fit
     reply = generate(PROMPT.format(context=context, question=question), max_tokens=400)
     return reply, hits
 

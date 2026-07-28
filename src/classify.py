@@ -28,12 +28,15 @@ def main() -> None:
     results = {}
     for label in LABELS:
         y = np.array([t[label] for t in tickets])
+        # hold out 20% the model never sees (stratified to keep rare classes in both)
         X_tr, X_te, y_tr, y_te = train_test_split(
             X, y, test_size=0.2, random_state=7, stratify=y
         )
+        # train on the 80%, then predict on the unseen 20%
         clf = LogisticRegression(max_iter=1000, class_weight="balanced")
         clf.fit(X_tr, y_tr)
         pred = clf.predict(X_te)
+        # accuracy = overall correct; macro-F1 = per-class (honest with imbalance)
         acc = accuracy_score(y_te, pred)
         f1 = f1_score(y_te, pred, average="macro")
         results[label] = acc

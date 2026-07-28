@@ -29,11 +29,13 @@ def load_tickets() -> list[dict]:
 def build_features(force: bool = False):
     """Return (X, tickets): X is a (n, 768) float32 matrix aligned to tickets."""
     tickets = load_tickets()
+    # reuse the cached matrix if present — embedding 2,038 tickets costs time/money
     if os.path.exists(CACHE) and not force:
         X = np.load(CACHE)
         assert X.shape[0] == len(tickets), "cache stale — rerun with force=True"
         return X, tickets
 
+    # feature = each ticket's subject+body embedded; save so we embed only once
     texts = [f"{t['subject']}\n{t['body']}".strip() for t in tickets]
     X = np.asarray(embed_texts(texts), dtype="float32")
     np.save(CACHE, X)

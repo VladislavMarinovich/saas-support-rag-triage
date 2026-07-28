@@ -56,9 +56,11 @@ def get_index(create: bool = True):
 
 def index_kb() -> int:
     """Chunk + embed the KB and upsert every chunk into Pinecone."""
+    # 1. split the KB into chunks, then embed each chunk's text
     chunks = chunk_kb()
     vectors = embed_texts([c.text for c in chunks])
     index = get_index()
+    # 2. build one record per chunk: id + its vector + metadata (text rides along)
     items = [
         {
             "id": c.chunk_id,
@@ -67,6 +69,7 @@ def index_kb() -> int:
         }
         for c, v in zip(chunks, vectors)
     ]
+    # 3. upsert in batches (Pinecone caps how many vectors per request)
     for i in range(0, len(items), 100):
         index.upsert(vectors=items[i:i + 100])
     return len(items)
@@ -75,6 +78,7 @@ def index_kb() -> int:
 def search(query: str, top_k: int = 3):
     """Embed the query and return the top_k nearest chunks from Pinecone."""
     index = get_index(create=False)
+    # embed the query with the SAME model, then ask Pinecone for the nearest vectors
     qv = embed_texts([query])[0]
     res = index.query(vector=qv, top_k=top_k, include_metadata=True)
     return [(m["id"], m["score"], m["metadata"]["text"]) for m in res["matches"]]

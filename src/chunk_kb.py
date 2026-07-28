@@ -39,10 +39,11 @@ def chunk_article(path: str) -> list[Chunk]:
     raw = re.split(r"\n-{3,}\s*\n+\*\*Still stuck", raw)[0].strip()
 
     lines = raw.splitlines()
-    title = lines[0].lstrip("#").strip()
+    title = lines[0].lstrip("#").strip()  # first line is the "# Article title"
 
     # Segment into (heading | None, body_lines): the first segment (before any
-    # ##) is the intro and carries heading=None.
+    # ##) is the intro and carries heading=None. Walk the lines; each "## " opens
+    # a new section, everything else accumulates into the current section's body.
     segments: list[tuple[str | None, list[str]]] = []
     heading: str | None = None
     body: list[str] = []
@@ -56,6 +57,8 @@ def chunk_article(path: str) -> list[Chunk]:
     if body:
         segments.append((heading, body))
 
+    # Turn each section into a self-contained chunk: prepend the doc title (and
+    # heading) so the chunk carries its own context even if it's one sentence.
     chunks: list[Chunk] = []
     for i, (heading, body) in enumerate(segments):
         text_body = "\n".join(body).strip()
