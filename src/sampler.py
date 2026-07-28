@@ -188,6 +188,23 @@ def sample_batch(
     return [replace(s, ticket_id=f"TCK-{i + 1:06d}") for i, s in enumerate(specs)]
 
 
+def sample_month(year: int, month: int, n: int, *, seed: int = 7) -> list[TicketSpec]:
+    """Sample `n` specs whose created_at falls within the given month.
+
+    Each month uses a distinct-but-reproducible seed, so months vary from each
+    other yet the whole dataset regenerates identically. ticket_id is
+    chronological WITHIN the month here; the final assembly step renumbers
+    globally across all months.
+    """
+    start = datetime(year, month, 1)
+    end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
+    window_days = (end - start).days
+    rng = random.Random(f"{seed}-{year}-{month:02d}")
+    specs = [sample_spec(rng, start, window_days) for _ in range(n)]
+    specs.sort(key=lambda s: s.created_at)
+    return [replace(s, ticket_id=f"TCK-{i + 1:06d}") for i, s in enumerate(specs)]
+
+
 def validate_catalog() -> None:
     """Fail loudly if any scenario carries a label outside the enums."""
     for s in SCENARIOS:
