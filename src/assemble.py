@@ -37,6 +37,13 @@ def assemble(
 ):
     """Merge monthly files → re-dated, chronological, globally-renumbered dataset."""
     files = sorted(glob.glob(pattern))
+    # Fallback: if the monthly intermediates were cleaned up, re-date from the
+    # already-assembled dataset itself (idempotent). Never write an empty file.
+    if not files and Path(out).exists():
+        files = [out]
+    if not files:
+        raise SystemExit(f"no input files matched {pattern!r} and {out} not found")
+
     rows: list[dict] = []
     for f in files:
         with open(f, encoding="utf-8") as fh:
