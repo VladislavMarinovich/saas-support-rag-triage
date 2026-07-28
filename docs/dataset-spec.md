@@ -118,6 +118,12 @@ Steps 1–5 produce the **targets** (answer key). Step 7 produces the **noisy
 intake** input — computed *after* the true labels so it can be deliberately
 wrong relative to them.
 
+> **Implementation note.** The generator implements this model as a *scenario
+> catalog* in [`src/taxonomy.py`](../src/taxonomy.py): each scenario is a coherent
+> (topic, type, priority, routing) bundle with a weight. The catalog's **verified
+> marginals are the source of truth**; the numbers in §4.1–§4.2 are design intent
+> and differ in practice (e.g. `how_to` ≈ 45%). Priority lands on 60/30/9/1 exactly.
+
 ### 4.1 `P(topic)` — initial weights (tune in validation)
 
 Connectors and Attribution carry the demo's best RAG-deflection stories, so they
