@@ -20,7 +20,7 @@ the catalog (priority 60/30/9/1) plus print one example spec.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, replace
 from datetime import datetime, timedelta
 
 from src.taxonomy import (
@@ -136,11 +136,10 @@ def _pick_role(rng: random.Random, scenario: Scenario) -> str:
 
 def sample_spec(
     rng: random.Random,
-    seq: int,
     window_start: datetime,
     window_days: int,
 ) -> TicketSpec:
-    """Build one TicketSpec. `seq` drives the ticket_id."""
+    """Build one TicketSpec. ticket_id is assigned later (chronologically)."""
     scenario = rng.choices(SCENARIOS, weights=[s.weight for s in SCENARIOS], k=1)[0]
 
     channel = _weighted_choice(rng, CHANNEL_WEIGHTS)
@@ -155,7 +154,7 @@ def sample_spec(
     created_at = (window_start + offset).isoformat(timespec="seconds")
 
     return TicketSpec(
-        ticket_id=f"TCK-{seq:06d}",
+        ticket_id="",  # assigned in sample_batch after sorting by created_at
         created_at=created_at,
         channel=channel,
         plan=plan,
@@ -181,7 +180,12 @@ def sample_batch(
 ) -> list[TicketSpec]:
     """Sample `n` reproducible ticket specs."""
     rng = random.Random(seed)
-    return [sample_spec(rng, i + 1, window_start, window_days) for i in range(n)]
+    specs = [sample_spec(rng, window_start, window_days) for _ in range(n)]
+    # Assign ticket_id in chronological order so IDs are monotonic with time,
+    # like a real ticketing system (TCK-000001 = the earliest ticket). ISO 8601
+    # strings sort chronologically, so a plain string sort is correct.
+    specs.sort(key=lambda s: s.created_at)
+    return [replace(s, ticket_id=f"TCK-{i + 1:06d}") for i, s in enumerate(specs)]
 
 
 def validate_catalog() -> None:
