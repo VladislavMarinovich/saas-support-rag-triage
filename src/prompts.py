@@ -59,11 +59,12 @@ def build_prompt(spec: TicketSpec) -> str:
         else ""
     )
     # Ground the plan so the model references the real tier instead of inventing
-    # names like "standard" or "mid-tier" (seen in validation).
+    # names like "standard" or "mid-tier". Conditional on relevance: forcing it
+    # into every ticket (seen in the Gemini A/B) reads unnaturally.
     plan_line = (
-        f"Your Polaris plan is {spec.plan.capitalize()} (the only tiers are "
-        f"Starter, Growth, Enterprise). If you mention your plan, use that exact "
-        f"name — never invent a tier."
+        f"Your Polaris plan is {spec.plan.capitalize()}. Only mention your plan if "
+        f"it is actually relevant (billing, upgrades, plan limits). If you do "
+        f"mention it, use that exact tier name — never invent one."
     )
 
     return f"""You are simulating a CUSTOMER writing an inbound support ticket to Polaris.
