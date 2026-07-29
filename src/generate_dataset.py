@@ -20,11 +20,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from src.prompts import build_prompt
 from src.generate_tickets import _parse_llm_json, _print_preview
 from src.generate_event_layer import generate_plan, FEATURE_REQUEST_SCENARIO
+
+
+def _in_quarter(created_at: str, year: int, q: int) -> bool:
+    """True if an ISO created_at falls in the given calendar quarter."""
+    yr, mo = int(created_at[:4]), int(created_at[5:7])
+    return yr == year and (q - 1) * 3 < mo <= q * 3
 
 
 def smoke_specs(plan: list) -> list:
@@ -65,7 +73,23 @@ def _done_ids(out: Path) -> set:
     return done
 
 
-def run(specs: list, out: Path | None, *, dry: bool, preview: bool) -> None:
+def _generate_one(spec):
+    """Worker: spec -> LLM -> ('ok', rec) or ('skip', (id, error)). One retry."""
+    from src.llm import generate  # lazy import so --dry needs no credentials
+    for attempt in range(2):
+        try:
+            raw = generate(build_prompt(spec), max_tokens=512)
+            subject, body = _parse_llm_json(raw)
+            rec = spec.to_record()
+            rec["subject"], rec["body"] = subject, body
+            return "ok", rec
+        except Exception as e:
+            if attempt == 1:
+                return "skip", (spec.ticket_id, str(e))
+
+
+def run(specs: list, out: Path | None, *, dry: bool, preview: bool,
+        workers: int = 8) -> None:
     if dry:
         for spec in specs:
             print("─" * 72)
@@ -74,54 +98,55 @@ def run(specs: list, out: Path | None, *, dry: bool, preview: bool) -> None:
             print(build_prompt(spec))
         return
 
-    from src.llm import generate  # imported lazily so --dry needs no credentials
-
+    # skip ticket_ids already written (resume a long / batched run)
     done = _done_ids(out) if out else set()
+    todo = [s for s in specs if s.ticket_id not in done]
     if done:
-        print(f"resuming: {len(done)} tickets already in {out}, skipping those")
+        print(f"resuming: {len(done)} already in {out}, {len(todo)} to go")
+
+    lock = threading.Lock()  # serialize the incremental writes across threads
     f = out.open("a", encoding="utf-8") if out else None
-    written = 0
+    written = skipped = 0
     try:
-        for spec in specs:
-            if spec.ticket_id in done:
-                continue
-            # one retry, then skip — a single bad reply must not abort a big run
-            subject = body = None
-            for attempt in range(2):
-                try:
-                    raw = generate(build_prompt(spec), max_tokens=512)
-                    subject, body = _parse_llm_json(raw)
-                    break
-                except Exception as e:
-                    if attempt == 1:
-                        print(f"skip {spec.ticket_id}: {e}")
-            if body is None:
-                continue
-            rec = spec.to_record()
-            rec["subject"], rec["body"] = subject, body
-            if f:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                f.flush()  # crash-safe: each ticket hits disk immediately
-            written += 1
-            if preview:
-                _print_preview(rec)
-            elif written % 100 == 0:
-                print(f"  ... {written} generated")
+        # API calls are I/O-bound -> threads give near-linear speedup. Results are
+        # written as they complete (order-independent; ids are already assigned).
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = [ex.submit(_generate_one, s) for s in todo]
+            for fut in as_completed(futures):
+                status, payload = fut.result()
+                if status == "skip":
+                    tid, err = payload
+                    print(f"skip {tid}: {err}")
+                    skipped += 1
+                    continue
+                with lock:
+                    if f:
+                        f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                        f.flush()  # crash-safe: each ticket hits disk immediately
+                    written += 1
+                    if preview and written <= 5:
+                        _print_preview(payload)
+                    elif written % 100 == 0:
+                        print(f"  ... {written} generated")
     finally:
         if f:
             f.close()
     print("─" * 72)
-    print(f"generated {written} tickets" + (f" -> {out}" if out else ""))
+    print(f"generated {written} tickets ({skipped} skipped)"
+          + (f" -> {out}" if out else ""))
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true",
                     help="generate a small representative slice (launches, outage, base)")
+    ap.add_argument("--quarter", type=str, default=None,
+                    help="restrict to a calendar quarter, format YYYY-Qn (e.g. 2024-Q1)")
     ap.add_argument("--limit", type=int, default=None, help="cap number of specs")
     ap.add_argument("--out", type=str, default=None, help="JSONL output path (append/resume)")
     ap.add_argument("--dry", action="store_true", help="print prompts only, no LLM call")
     ap.add_argument("--seed", type=int, default=11, help="plan seed (reproducible)")
+    ap.add_argument("--workers", type=int, default=8, help="concurrent LLM calls")
     args = ap.parse_args()
 
     plan = generate_plan(seed=args.seed)
@@ -129,16 +154,20 @@ def main() -> None:
 
     if args.smoke:
         specs = smoke_specs(plan)
-    elif args.limit:
-        specs = plan[:args.limit]
     else:
         specs = plan
+        if args.quarter:
+            year, q = args.quarter.upper().split("-Q")
+            specs = [s for s in specs if _in_quarter(s.created_at, int(year), int(q))]
+            print(f"quarter {args.quarter}: {len(specs)} specs")
+        if args.limit:
+            specs = specs[:args.limit]
 
     out = Path(args.out) if args.out else None
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
-    # preview each ticket only for small runs (smoke / dry); stay quiet for the bulk
-    run(specs, out, dry=args.dry, preview=args.smoke or bool(args.limit))
+    # preview a few only for small runs (smoke); stay quiet for the bulk
+    run(specs, out, dry=args.dry, preview=args.smoke, workers=args.workers)
 
 
 if __name__ == "__main__":
