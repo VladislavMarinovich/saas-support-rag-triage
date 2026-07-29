@@ -59,15 +59,17 @@ class Event:
 # ---------------------------------------------------------------------------
 EVENTS: tuple[Event, ...] = (
     # --- LAUNCHES: new connectors ship, how-to waves follow (60/25/15) ------
-    Event("launch_salesforce_connector", "launch", "2024-04-15", 90, 800,
+    # All three ship in 2025, in sequence: Salesforce (Q1/Q2) -> TikTok (Q2)
+    # -> Zoho (Q3/Q4). 2024 carries no launches (a stable-product year).
+    Event("launch_salesforce_connector", "launch", "2025-03-03", 90, 800,
           boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
           feature="Salesforce", prelaunch_days=90),
-    Event("launch_zoho_connector", "launch", "2024-10-14", 90, 800,
-          boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
-          feature="Zoho CRM", prelaunch_days=90),
-    Event("launch_tiktok_connector", "launch", "2025-04-14", 90, 1200,
+    Event("launch_tiktok_connector", "launch", "2025-05-12", 90, 1200,
           boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
           feature="TikTok Ads", prelaunch_days=90),
+    Event("launch_zoho_connector", "launch", "2025-09-15", 90, 800,
+          boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
+          feature="Zoho CRM", prelaunch_days=90),
 
     # --- OUTAGES 2024: sharp spikes over a few days -------------------------
     Event("outage_ga4_sync_2024q1", "outage", "2024-02-20", 4, 200,

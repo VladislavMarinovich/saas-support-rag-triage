@@ -141,10 +141,11 @@ pockets.
   (company growing). Roughly 6k in 2024, 12k in 2025.
 - **Event share:** ~25% of all tickets are event-driven (inside the 20–30% band);
   the remaining ~75% is base flow.
-- **Launches:** 3 total, one per new connector, spread across the span:
-  - Salesforce connector → Q2 2024
-  - Zoho CRM connector → Q4 2024
+- **Launches:** 3 total, one per new connector, all in 2025 in sequence (2024 is
+  a stable-product year with no launches):
+  - Salesforce connector → Q1/Q2 2025
   - TikTok Ads connector → Q2 2025
+  - Zoho CRM connector → Q3/Q4 2025
 - **Outages:** recurring, ~3 per year (~6 total), in varied months. Each is one of
   two flavors: a connector-sync outage (GA4/HubSpot) or a dashboards outage.
 
