@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -73,10 +75,16 @@ def _done_ids(out: Path) -> set:
     return done
 
 
-def _generate_one(spec):
-    """Worker: spec -> LLM -> ('ok', rec) or ('skip', (id, error)). One retry."""
+def _generate_one(spec, max_retries: int = 6):
+    """Worker: spec -> LLM -> ('ok', rec) or ('skip', (id, error)).
+
+    Retries with exponential backoff + jitter (2->4->8->16->30s). This rides out
+    Vertex 429 RESOURCE_EXHAUSTED windows: when a thread hits the quota it sleeps
+    and retries instead of dropping the ticket, which also self-throttles the pool.
+    """
     from src.llm import generate  # lazy import so --dry needs no credentials
-    for attempt in range(2):
+    delay = 2.0
+    for attempt in range(max_retries):
         try:
             raw = generate(build_prompt(spec), max_tokens=512)
             subject, body = _parse_llm_json(raw)
@@ -84,12 +92,14 @@ def _generate_one(spec):
             rec["subject"], rec["body"] = subject, body
             return "ok", rec
         except Exception as e:
-            if attempt == 1:
-                return "skip", (spec.ticket_id, str(e))
+            if attempt == max_retries - 1:
+                return "skip", (spec.ticket_id, str(e)[:120])
+            time.sleep(delay + random.random())  # jitter avoids thundering herd
+            delay = min(delay * 2, 30.0)
 
 
 def run(specs: list, out: Path | None, *, dry: bool, preview: bool,
-        workers: int = 8) -> None:
+        workers: int = 5) -> None:
     if dry:
         for spec in specs:
             print("─" * 72)
@@ -146,7 +156,7 @@ def main() -> None:
     ap.add_argument("--out", type=str, default=None, help="JSONL output path (append/resume)")
     ap.add_argument("--dry", action="store_true", help="print prompts only, no LLM call")
     ap.add_argument("--seed", type=int, default=11, help="plan seed (reproducible)")
-    ap.add_argument("--workers", type=int, default=8, help="concurrent LLM calls")
+    ap.add_argument("--workers", type=int, default=5, help="concurrent LLM calls")
     args = ap.parse_args()
 
     plan = generate_plan(seed=args.seed)
