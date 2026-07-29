@@ -95,9 +95,10 @@ HubSpot**. The launches ship these new connectors:
 
 **Full arc** (approved): each launch has a *before* and an *after*.
 
-- **Before the launch** — feature-request tickets asking for the connector that
-  "does not exist yet" (scenario `connectors_feature_request_source`). These fall
-  off right when the connector ships.
+- **Before the launch** — feature-request tickets from users who have **no native
+  connector to their CRM** and ask *"when will you add a direct Salesforce / Zoho
+  connector?"* (scenario `connectors_feature_request_source`, with the launch's
+  `feature` name injected). These fall off to ~0 right when the connector ships.
 - **The launch** — the wave of `how_to` / `misconfiguration` tickets about the new
   connector, following the 60/25/15 decay.
 
