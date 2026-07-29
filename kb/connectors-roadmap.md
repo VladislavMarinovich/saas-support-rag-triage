@@ -1,10 +1,10 @@
 # Requesting a new connector (Salesforce, Zoho, and others)
 
-Polaris connects to your marketing and analytics sources so you can blend them in one place. Today we offer native connectors for **Google Analytics 4 (GA4)** and **HubSpot**. We know many teams also want to bring in data from other CRMs and ad platforms, and new connectors are one of our most requested improvements.
+Polaris connects to your marketing and analytics sources so you can blend them in one place. We know many teams also want to bring in data from other CRMs, ad platforms, and email tools, and new connectors are one of our most requested improvements.
 
-## Is there a connector for my CRM yet?
+## Is there a connector for my source yet?
 
-Native connectors available today are **GA4** and **HubSpot**. Direct connectors for other sources — such as **Salesforce**, **Zoho CRM**, and additional ad platforms — are **not available yet**.
+Native connectors available today include **Google Analytics 4 (GA4)**, **Google Ads**, **HubSpot**, **Mailchimp**, and **Brevo**. Direct connectors for some other sources — such as **Salesforce**, **Zoho CRM**, **TikTok Ads**, **Constant Contact**, and **Klaviyo** — are **not available yet**.
 
 ## When will my connector be released?
 
