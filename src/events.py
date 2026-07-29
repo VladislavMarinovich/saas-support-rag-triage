@@ -3,8 +3,8 @@ Event catalog for the temporal event layer (see docs/event-layer-spec.md).
 
 This module is PURE DATA (no LLM, no I/O), the sibling of src/taxonomy.py: it
 declares the concrete EVENTS that sit on top of the base ticket flow and give the
-18k dataset a realistic temporal signature — sharp outage spikes and gradual
-launch waves.
+~24k dataset (Jan 2024 – Jun 2026) a realistic temporal signature — sharp outage
+spikes and gradual launch waves.
 
 Design (event-layer-spec.md §2–§4):
   An event is an external cause bounded in time. It does two things inside its
@@ -58,16 +58,25 @@ class Event:
 # 2025 magnitudes run ~2x 2024 (the company is growing; see spec §5).
 # ---------------------------------------------------------------------------
 EVENTS: tuple[Event, ...] = (
-    # --- LAUNCHES: new connectors ship, how-to waves follow (60/25/15) ------
-    # All three ship in 2025, in sequence: Salesforce (Q1/Q2) -> TikTok (Q2)
-    # -> Zoho (Q3/Q4). 2024 carries no launches (a stable-product year).
-    Event("launch_salesforce_connector", "launch", "2025-03-03", 90, 800,
+    # --- LAUNCHES 2024: email-marketing connectors --------------------------
+    # 2024 is the email-marketing expansion year (Mailchimp/Brevo already exist;
+    # these are the ones customers were still asking for).
+    Event("launch_constant_contact_connector", "launch", "2024-05-13", 90, 450,
+          boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
+          feature="Constant Contact", prelaunch_days=90),
+    Event("launch_klaviyo_connector", "launch", "2024-10-07", 90, 450,
+          boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
+          feature="Klaviyo", prelaunch_days=90),
+
+    # --- LAUNCHES 2025: CRM + ads connectors, in sequence -------------------
+    # Salesforce (Q1/Q2) -> TikTok (Q2) -> Zoho (Q3/Q4).
+    Event("launch_salesforce_connector", "launch", "2025-03-03", 90, 700,
           boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
           feature="Salesforce", prelaunch_days=90),
-    Event("launch_tiktok_connector", "launch", "2025-05-12", 90, 1200,
+    Event("launch_tiktok_connector", "launch", "2025-05-12", 90, 900,
           boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
           feature="TikTok Ads", prelaunch_days=90),
-    Event("launch_zoho_connector", "launch", "2025-09-15", 90, 800,
+    Event("launch_zoho_connector", "launch", "2025-09-15", 90, 700,
           boost=("connectors_howto_connect_hubspot", "connectors_howto_reauthorize"),
           feature="Zoho CRM", prelaunch_days=90),
 
@@ -86,6 +95,12 @@ EVENTS: tuple[Event, ...] = (
           boost=("connectors_sync_broken", "connectors_sync_delay")),
     Event("outage_dashboards_2025q4", "outage", "2025-11-04", 3, 400,
           boost=("dashboards_outage", "dashboards_wrong_numbers")),
+
+    # --- OUTAGES 2026 H1: the dataset runs through June 2026 ----------------
+    Event("outage_dashboards_2026q1", "outage", "2026-02-17", 3, 500,
+          boost=("dashboards_outage", "dashboards_wrong_numbers")),
+    Event("outage_ga4_sync_2026q2", "outage", "2026-05-06", 4, 500,
+          boost=("connectors_sync_broken", "connectors_sync_delay")),
 )
 
 
@@ -109,7 +124,7 @@ if __name__ == "__main__":
     validate_catalog()
     # extra tickets the layer injects vs the ~18k / ~25% target
     total_events = sum(e.magnitude for e in EVENTS)
-    target_total = 18_000
+    target_total = 24_000
     print(f"events: {len(EVENTS)}   event-driven tickets: {total_events}")
     print(f"event share of {target_total}: {total_events / target_total * 100:.1f}%  (target 20-30%)\n")
 
