@@ -80,20 +80,41 @@ def build_response(ticket: dict) -> dict:
 
 
 def _stratified_sample(tickets: list[dict], n: int) -> list[dict]:
-    """Muestra que garantiza mezcla: RAG (kb_autoresolve) + cada equipo escalado."""
+    """Muestra que garantiza mezcla: RAG + cada equipo escalado + cada EVENTO.
+
+    El foro es más vendedor si muestra los picos (lanzamientos de conectores,
+    outages), así que reservamos cupo para tickets de cada event_id además del
+    reparto por routing. Dedup por ticket_id al final.
+    """
     by_routing: dict[str, list[dict]] = {}
+    by_event: dict[str, list[dict]] = {}
     for t in tickets:
         by_routing.setdefault(t["routing"], []).append(t)
+        if t.get("event_id"):
+            by_event.setdefault(t["event_id"], []).append(t)
 
-    # ~half kb_autoresolve (donde importa la calidad RAG), resto repartido en equipos
     picks: list[dict] = []
+    # 1. cupo garantizado para eventos: unos pocos de cada lanzamiento/outage
+    for ev_tickets in by_event.values():
+        picks.extend(ev_tickets[:6])
+
+    # 2. ~half kb_autoresolve (donde importa la calidad RAG)
     kb = by_routing.get("kb_autoresolve", [])
     picks.extend(kb[: max(1, n // 2)])
+
+    # 3. resto repartido entre los equipos escalados
     others = [r for r in by_routing if r != "kb_autoresolve"]
     per = max(1, (n - len(picks)) // max(1, len(others)))
     for r in others:
         picks.extend(by_routing[r][:per])
-    return picks[:n]
+
+    # dedup preservando orden (un ticket de evento no debe contar dos veces)
+    seen, unique = set(), []
+    for t in picks:
+        if t["ticket_id"] not in seen:
+            seen.add(t["ticket_id"])
+            unique.append(t)
+    return unique[:n]
 
 
 def main() -> None:
