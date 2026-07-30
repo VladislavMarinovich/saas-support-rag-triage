@@ -20,25 +20,20 @@ demo es el vehículo.
 - **README** del repo con hero (firma temporal). 5 notebooks. **Ledger de costos**
   (`docs/costs.md`, ~$3.35/$100). **ADR 0001** (quitar vector DB → cosine sobre Mongo).
 
-## 🔧 En curso: consolidar a MongoDB (un solo store) — ver ADR 0001
+## ✅ Consolidado a MongoDB (un solo store) — ADR 0001 CERRADO
 - [x] **Atlas M0 conectado.** Cluster `polariscluster` (AWS us-east-1), DB = `polaris`,
   `MONGODB_URI` en `.env`. `python -m src.mongo_store --ping` → OK.
 - [x] **24k tickets cargados** → `polaris.tickets` (23.994). Índices: ticket_id (unique),
   created_at.
-- [ ] **Cargar 89 chunks KB + vectores Vertex → `polaris.kb_chunks`** (doc: chunk_id,
-  source, title, heading, text, vector). Vía `index_kb()` en el nuevo vectorstore.
-  Necesita Vertex/ADC (re-auth si expiró: `gcloud auth application-default login`).
-- [ ] **Reescribir `src/vectorstore.py`** → SIN Pinecone. Funciones:
-  `index_kb()` (chunk→embed→upsert a `polaris.kb_chunks`) y
-  `search(query, top_k=3)` que embebe la query, hace **cosine exacto** sobre los
-  vectores de Mongo (cachear en memoria) y **DEVUELVE `[(chunk_id, score, text)]`**.
-  ⚠️ Mantener EXACTO ese shape de retorno: `rag.py` hace `for cid, _score, text in hits`
-  y `answer()` retorna `(reply, hits)`. Así `rag.py` NO se toca.
-- [ ] Verificar RAG: `python -m src.rag` (HubSpot→responde, "book flights"→rechaza,
-  TikTok/roadmap→espera honesta).
-- [ ] Quitar Pinecone: `uv remove pinecone-client` (o el paquete), limpiar
-  `PINECONE_API_KEY` de `.env.example`, y actualizar cualquier import.
-- [ ] Actualizar `costs.md` y esta bitácora al cerrar.
+- [x] **89 chunks KB + vectores → `polaris.kb_chunks`** (doc: chunk_id, source, title,
+  heading, text, vector). Vía `index_kb()` en el nuevo `vectorstore.py`.
+- [x] **`src/vectorstore.py` reescrito** → SIN Pinecone. `index_kb()` (chunk→embed→upsert
+  a Mongo) + `search(query, top_k=3)` = **cosine exacto** (numpy, cache en memoria),
+  DEVUELVE `[(chunk_id, score, text)]` (shape intacto → `rag.py` NO se tocó salvo docstring).
+- [x] **RAG verificado**: HubSpot→responde (top 0.825, idéntico al benchmark), "book
+  flights"→rechaza (0.545), TikTok→espera honesta (roadmap 0.473). ✔
+- [x] **Pinecone quitado**: `uv remove pinecone`; `.env.example` ahora tiene `MONGODB_URI`
+  (fuera `PINECONE_API_KEY`); README (stack + fila RAG) actualizado con nota ADR.
 
 ## ⏭️ Pendiente
 - [ ] **Respuestas** (alimentan la UI): acks **templados** para 9.905 escalados (sin
@@ -67,8 +62,8 @@ demo es el vehículo.
 
 ## 🔐 Secrets (`.env`, NUNCA en chat/git)
 `ANTHROPIC_API_KEY` · `GOOGLE_CLOUD_PROJECT=polaris-triage-demo` (ADC, re-auth con
-`gcloud auth application-default login` cuando expire) · `PINECONE_API_KEY` (a quitar)
-· `HF_TOKEN` · `KAGGLE_API_TOKEN` · `MONGODB_URI` (pendiente).
+`gcloud auth application-default login` cuando expire) · `HF_TOKEN` · `KAGGLE_API_TOKEN`
+· `MONGODB_URI`. (Pinecone eliminado — ver ADR 0001.)
 
 ## 🗂️ Mapa de archivos (clave)
 - `src/`: taxonomy, sampler, prompts, events, generate_event_layer, generate_dataset,
