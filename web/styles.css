@@ -159,6 +159,8 @@ h1 .dim { color: var(--text-dim); font-weight: 500; }
 .response-body li { margin: .2rem 0; }
 .response-body strong { font-weight: 700; }
 .response-body code { background: var(--surface-2); padding: .05rem .35rem; border-radius: 5px; font-size: .88em; }
+.response-body a { color: var(--accent); text-decoration: underline; }
+.response-body em { font-style: italic; }
 
 .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; border-top: 1px solid var(--border); }
 .listcol { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }

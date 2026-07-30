@@ -15,8 +15,13 @@ const fmtDate = (iso) => (iso || "").slice(0, 10);
 // sin esto se ven los asteriscos crudos. SEGURO: escapamos TODO primero (esc), así
 // el contenido no puede inyectar HTML; luego solo introducimos nuestras propias
 // etiquetas controladas para negrita/código/listas/párrafos.
+// El orden importa: links primero, luego negrita (**) ANTES que itálica (*), luego
+// código. `s` ya viene HTML-escapado; solo linkeamos http(s)/mailto (nunca javascript:).
 const mdInline = (s) => s
+  .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener">$1</a>')
   .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+  .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
   .replace(/`([^`]+)`/g, "<code>$1</code>");
 
 function mdToHtml(raw) {
