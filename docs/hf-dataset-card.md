@@ -1,5 +1,5 @@
 ---
-license: cc-by-4.0
+license: cc-by-sa-4.0
 task_categories:
   - text-classification
   - question-answering
@@ -105,7 +105,7 @@ teaching and demos.
 
 ## License & citation
 
-Released under **CC-BY-4.0** (attribution). If you use it:
+Released under **CC BY-SA 4.0** (attribution + share-alike). If you use it:
 
 ```
 Marinovich, V. (2026). Polaris Support Tickets — Synthetic Dataset (v2).
