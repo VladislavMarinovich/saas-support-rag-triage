@@ -46,7 +46,12 @@ demo es el vehículo.
   agarra los más viejos; los picos de conectores/outages quedan fuera = se pierde lo
   más vendedor del dataset). Hacer el sampler event-aware o generar respuestas para un
   set curado con eventos, y re-exportar.
-- [ ] **Deploy** del foro a Cloudflare Pages (repo `web/` como build output).
+- [x] **Deploy a Cloudflare** (Workers Static Assets, `wrangler.jsonc` sirve `web/`).
+  Verificado vivo en `saas-support-rag-triage.vladislav-335.workers.dev` (376 tickets,
+  78 de evento, 0 errores). Mono-repo (no se separó `web/`). Nota: el build corre
+  `uv sync` innecesario (detecta pyproject) — optimizable, no rompe.
+- [ ] **Custom domain** `polaris.marinovich.co` (pestaña Domains del Worker; CNAME+SSL
+  automáticos). `ai.marinovich.co` se reserva para la vitrina multi-demo futura.
 - [ ] **Chat en vivo** (fase 2): Worker con Vertex embed (REST) + cosine JS + Anthropic
   REST. Los 89 vectores caben bundled o vía Mongo Data API. Maneja service-account GCP.
 - [ ] **Bulk de respuestas** (14k RAG) cuando decidamos — o dejar la muestra si el foro
