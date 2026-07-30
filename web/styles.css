@@ -150,9 +150,15 @@ h1 .dim { color: var(--text-dim); font-weight: 500; }
 .chip b { color: var(--text-dim); font-weight: 600; }
 .response {
   border-left: 3px solid var(--accent); background: var(--accent-soft);
-  border-radius: 0 10px 10px 0; padding: .85rem 1rem; font-size: .92rem; white-space: pre-wrap;
+  border-radius: 0 10px 10px 0; padding: .85rem 1rem; font-size: .92rem;
 }
-.response-kind { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 600; color: var(--accent); margin-bottom: .5rem; }
+.response-kind { display: flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 600; color: var(--accent); margin-bottom: .6rem; }
+.response-body p { margin: 0 0 .6rem; }
+.response-body p:last-child { margin-bottom: 0; }
+.response-body ul, .response-body ol { margin: .3rem 0 .7rem; padding-left: 1.25rem; }
+.response-body li { margin: .2rem 0; }
+.response-body strong { font-weight: 700; }
+.response-body code { background: var(--surface-2); padding: .05rem .35rem; border-radius: 5px; font-size: .88em; }
 
 .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; border-top: 1px solid var(--border); }
 .listcol { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }

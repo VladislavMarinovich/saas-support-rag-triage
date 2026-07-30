@@ -11,6 +11,39 @@ const TITLE = (t) => (t.subject && t.subject.trim()) || t.body.slice(0, 60);
 const pretty = (s) => String(s ?? "").replace(/_/g, " ");
 const fmtDate = (iso) => (iso || "").slice(0, 10);
 
+// Mini-render de markdown → HTML. El LLM devuelve **negrita**, listas y párrafos;
+// sin esto se ven los asteriscos crudos. SEGURO: escapamos TODO primero (esc), así
+// el contenido no puede inyectar HTML; luego solo introducimos nuestras propias
+// etiquetas controladas para negrita/código/listas/párrafos.
+const mdInline = (s) => s
+  .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+  .replace(/`([^`]+)`/g, "<code>$1</code>");
+
+function mdToHtml(raw) {
+  const lines = esc(raw).split("\n");
+  let html = "", list = null;
+  const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+  for (const line of lines) {
+    const t = line.trim();
+    const ol = t.match(/^\d+\.\s+(.*)/);      // "1. paso"
+    const ul = t.match(/^[-*]\s+(.*)/);        // "- item" / "* item"
+    if (ol) {
+      if (list !== "ol") { closeList(); html += "<ol>"; list = "ol"; }
+      html += `<li>${mdInline(ol[1])}</li>`;
+    } else if (ul) {
+      if (list !== "ul") { closeList(); html += "<ul>"; list = "ul"; }
+      html += `<li>${mdInline(ul[1])}</li>`;
+    } else if (!t) {
+      closeList();                             // línea en blanco: cierra la lista
+    } else {
+      closeList();
+      html += `<p>${mdInline(t)}</p>`;
+    }
+  }
+  closeList();
+  return html;
+}
+
 // ---- carga ----
 async function load() {
   try {
@@ -116,7 +149,7 @@ function select(t) {
     <div class="section-label">Response</div>
     <div class="response">
       <div class="response-kind">${isRag ? "◆ Answered from the knowledge base (RAG)" : "↗ Escalation acknowledgement (templated)"}</div>
-      ${esc(t.response)}
+      <div class="response-body">${mdToHtml(t.response)}</div>
     </div>`;
 }
 
