@@ -638,8 +638,8 @@ pd.concat({c: freq_table(c) for c in ["topic", "type", "routing"]}, names=["fiel
     </tr>
     <tr>
       <th>engineering</th>
-      <td>6881</td>
-      <td>28.7</td>
+      <td>7645</td>
+      <td>31.9</td>
     </tr>
     <tr>
       <th>sales_success</th>
@@ -647,14 +647,14 @@ pd.concat({c: freq_table(c) for c in ["topic", "type", "routing"]}, names=["fiel
       <td>8.0</td>
     </tr>
     <tr>
-      <th>security_incident</th>
-      <td>841</td>
-      <td>3.5</td>
-    </tr>
-    <tr>
       <th>retention</th>
       <td>259</td>
       <td>1.1</td>
+    </tr>
+    <tr>
+      <th>security_incident</th>
+      <td>77</td>
+      <td>0.3</td>
     </tr>
   </tbody>
 </table>
@@ -942,8 +942,8 @@ ct[["low", "medium", "high", "critical", "Total"]]
       <td>2237</td>
       <td>2437</td>
       <td>2156</td>
-      <td>51</td>
-      <td>6881</td>
+      <td>815</td>
+      <td>7645</td>
     </tr>
     <tr>
       <th>kb_autoresolve</th>
@@ -974,8 +974,8 @@ ct[["low", "medium", "high", "critical", "Total"]]
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>841</td>
-      <td>841</td>
+      <td>77</td>
+      <td>77</td>
     </tr>
     <tr>
       <th>Total</th>

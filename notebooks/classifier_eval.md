@@ -100,8 +100,8 @@ pd.DataFrame(full, index=["accuracy", "macro_F1"]).T.round(3)
     </tr>
     <tr>
       <th>routing</th>
-      <td>0.996</td>
-      <td>0.984</td>
+      <td>0.995</td>
+      <td>0.972</td>
     </tr>
     <tr>
       <th>sentiment</th>
@@ -218,7 +218,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>500</th>
       <td>0.928</td>
-      <td>0.875</td>
+      <td>0.848</td>
       <td>0.647</td>
       <td>0.992</td>
       <td>0.944</td>
@@ -226,7 +226,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>1000</th>
       <td>0.949</td>
-      <td>0.933</td>
+      <td>0.907</td>
       <td>0.667</td>
       <td>0.994</td>
       <td>0.988</td>
@@ -234,7 +234,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>2500</th>
       <td>0.971</td>
-      <td>0.975</td>
+      <td>0.945</td>
       <td>0.705</td>
       <td>0.995</td>
       <td>0.990</td>
@@ -242,7 +242,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>5000</th>
       <td>0.984</td>
-      <td>0.984</td>
+      <td>0.953</td>
       <td>0.734</td>
       <td>0.997</td>
       <td>0.994</td>
@@ -250,7 +250,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>10000</th>
       <td>0.990</td>
-      <td>0.981</td>
+      <td>0.965</td>
       <td>0.775</td>
       <td>0.998</td>
       <td>0.995</td>
@@ -258,7 +258,7 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
     <tr>
       <th>19195</th>
       <td>0.992</td>
-      <td>0.984</td>
+      <td>0.972</td>
       <td>0.805</td>
       <td>0.998</td>
       <td>0.996</td>
@@ -268,6 +268,45 @@ res.pivot(index="n_train", columns="label", values="macro_F1").round(3)
 </div>
 
 
+
+## A label-quality audit — the `security_incident` fix
+
+Reviewing the routing distribution surfaced a red flag: **841 tickets labelled
+`security_incident`** — implausibly high for a well-run platform. On inspection,
+**764 were dashboards outages** (an *availability* problem) and only **77 were
+real security events** (cross-tenant leak, unauthorized access). The taxonomy had
+conflated *availability* incidents with *security* incidents.
+
+The subtle part: the classifier had faithfully **learned the mislabel** — its high
+routing score was partly rewarding it for reproducing a flawed label (garbage in,
+garbage out). **High accuracy against wrong labels is not a good model.**
+
+Fix: re-route outages to `engineering` (on-call), reserving `security_incident`
+for true breaches. After correction `security_incident` is a genuinely rare class
+(~77) and routing macro-F1 dips slightly (0.99 → 0.98) — which is *more honest*:
+the rare class is legitimately harder, and the metric now reflects real difficulty
+instead of an inflated, easy majority.
+
+
+```python
+pd.Series([t["routing"] for t in tickets]).value_counts()
+```
+
+
+
+
+    kb_autoresolve       14089
+    engineering           7645
+    sales_success         1924
+    retention              259
+    security_incident       77
+    Name: count, dtype: int64
+
+
+
+**Lesson: audit the labels, not just the metric.** The fix cost no
+regeneration — the ticket text never mentions the routing label, so correcting it
+is a pure relabel.
 
 ## Honest caveats (for the dataset card / interview)
 

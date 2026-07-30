@@ -184,8 +184,12 @@ SCENARIOS: tuple[Scenario, ...] = (
              "the customer wants to cancel or downgrade (churn risk)", 1.5),
 
     # --- CRITICAL: systemic / security / outage (rare) ---------------------
+    # An outage is an AVAILABILITY incident -> engineering/on-call, NOT the
+    # security queue. Routing it to security_incident conflated availability with
+    # security and inflated the "security" count; security_incident is reserved
+    # for real breaches (cross-tenant leak, unauthorized access).
     Scenario("dashboards_outage", "dashboards", "outage", "critical",
-             "security_incident", ("angry", "anxious", "frustrated"),
+             "engineering", ("angry", "anxious", "frustrated"),
              "dashboards are fully down; the customer cannot see any metrics", 0.25),
     Scenario("northstar_metric_miscalc", "northstar", "bug", "critical",
              "engineering", ("angry", "anxious"),
