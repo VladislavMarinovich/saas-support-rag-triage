@@ -19,12 +19,14 @@ only, excludes MongoDB).**
 
 | Activity | Model | Volume | Est. USD |
 |---|---|---|---|
-| RAG answers for the UI — curated sample | gemini-2.5-flash-lite | ~400 answers | ~$0.07 |
 | RAG answers for the UI — all `kb_autoresolve` | gemini-2.5-flash-lite | 14,089 answers | ~$2.54 |
+| Escalation acknowledgments — **templated, no LLM** | — (Python templates) | 9,905 acks | ~$0.00 |
 
-**Only `kb_autoresolve` tickets (59%) get a RAG answer; the other 9,905 escalate
-(routed to a team, no generated answer).** Answering the full deflectable set costs
-~$2.54; a curated sample for the gallery, cents.
+**Response strategy (cost-aware):** `kb_autoresolve` tickets (59%) get a grounded
+**RAG answer** (LLM, ~$2.54 for all 14k, or cents for a curated sample). The other
+9,905 escalate → a **templated acknowledgment** ("we've received your case and
+routed it to the X team"), keyed by routing + sentiment tone — no LLM, ~$0. Use the
+expensive tool only where it adds value; templates where they suffice.
 
 ## Running total
 
