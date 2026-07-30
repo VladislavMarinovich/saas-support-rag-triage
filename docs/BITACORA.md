@@ -57,7 +57,48 @@ demo es el vehículo.
 - [ ] **Bulk de respuestas** (14k RAG) cuando decidamos — o dejar la muestra si el foro
   ya cuenta la historia.
 
+## 🎯 Fase 2 — Vista de usuario en vivo (FIRMADO, en curso)
+Formulario público donde el cliente escribe un ticket y recibe respuesta al instante
+(triage + RAG en vivo). Es la pieza interactiva "joya" del portafolio.
+
+**Decisiones firmadas:**
+- Auth GCP: **1 service account + JWT firmado en el Worker (WebCrypto RS256)**. Vertex
+  para embeddings (`text-embedding-005`, SIN re-indexar — reusa los 89 vectores) y para
+  **Claude en Vertex Model Garden**. Aclaración clave: el JWT es auth Worker↔Google, NO
+  frena spam.
+- Anti-abuso (esa es la defensa real de créditos): **Turnstile** (captcha CF) + rate-limit
+  por IP + cap de longitud de input. **Turnstile va desde el inicio** (decisión de Vlad).
+- Vista cliente = **página aparte** (`/cliente`), no toggle en el foro.
+- Triage en vivo lo devuelve **Claude** junto con la respuesta (sklearn no corre en Worker).
+- 89 vectores: **bundled** en el Worker (import del JSON).
+
+**Arquitectura (ver diagrama):** Cliente → `POST /api/triage` al Worker → 1) verifica
+Turnstile → 2) rate-limit → 3) cap input → 4) access token GCP (JWT WebCrypto, cache 1h)
+→ 5) embed en Vertex → 6) cosine vs 89 vectores → 7) Claude en Vertex (respuesta grounded
++ triage JSON) → 8) responde. `wrangler.jsonc` pasa de assets-only a `main` (worker) +
+binding ASSETS; el worker maneja `/api/*` y delega el resto a los assets estáticos.
+
+**Yo construyo:** `worker/index.js` (JWT+embed+cosine+Claude+Turnstile+rate-limit),
+`web/cliente.html`+JS (form + widget Turnstile + área de respuesta), `worker/kb_vectors.json`
+(export de Mongo), ajuste de `wrangler.jsonc`.
+
+**Vlad provee (en paralelo, NADA de pegar secretos en el chat):**
+- [ ] Turnstile site en CF → SITE key (público, va en el HTML) + SECRET (secret del Worker).
+- [ ] Service account con acceso a Vertex + JSON key (secret del Worker `GCP_SA_KEY`).
+- [ ] Habilitar Claude en Vertex Model Garden (proyecto + región, p.ej. us-east5).
+
+**Orden de build:** (1) export vectores → (2) vista cliente con mock de respuesta (verifico
+UI sin secretos) → (3) worker real → (4) Vlad setea secrets → (5) test vivo en dev → (6)
+Turnstile enforced. Todo en DEV (`workers.dev`); prod (`polaris.marinovich.co`) al final.
+
 ## ⏭️ Pendiente (otros)
+- [ ] **Consola de gestión**: estado open/closed (derivar: auto-resuelto→cerrado,
+  escalado→abierto) + filtro por rango de fechas ("semana pasada"). Realismo tipo gestión.
+- [ ] **Conversación multi-turno** (cliente responde "gracias"/"aún nada"). Realismo.
+- [ ] **Auto-cerrar a 24h sin respuesta + notificar** — FUERA del demo (decisión Vlad),
+  solo anotado como idea de producto real.
+- [ ] **README/caso de estudio** (narrativa qué/por qué/tradeoffs + diagrama). Al final.
+- [ ] Tablas markdown en respuestas (4 casos en la muestra) — render pendiente si molesta.
 - [ ] Publicar el notebook EDA en Kaggle (web: Import → **Add Input** el dataset →
   Run All → Save). *El "sin gráficos" era por no montar el dataset como Input.*
 - [ ] **LinkedIn** la otra semana (viernes = mal día): ángulo del **label-audit**, o
