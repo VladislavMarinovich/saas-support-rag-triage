@@ -35,13 +35,24 @@ demo es el vehículo.
 - [x] **Pinecone quitado**: `uv remove pinecone`; `.env.example` ahora tiene `MONGODB_URI`
   (fuera `PINECONE_API_KEY`); README (stack + fila RAG) actualizado con nota ADR.
 
-## ⏭️ Pendiente
-- [ ] **Respuestas** (alimentan la UI): acks **templados** para 9.905 escalados (sin
-  LLM, ~$0) + respuestas **RAG** para 14.089 kb_autoresolve (~$2.54; muestra ~300
-  primero, luego decidir bulk). Guardar en Mongo (ticket + triage + respuesta).
-- [ ] **UI**: foro (lee Mongo, respuestas pre-computadas) + chat en vivo. Stack:
-  Cloudflare Pages+Workers + Mongo, o Gradio/HF Spaces. **NO BuddyPress.** Ojo:
-  Worker no corre Python → el chat RAG va por API directa o mini-servicio.
+## 🔧 UI foro (Cloudflare Pages) + respuestas
+- [x] **Motor de respuestas** (`src/responses.py`): kb_autoresolve→RAG (LLM), resto→ack
+  templado de cara al cliente (SLA por prioridad, sin LLM). Usa routing gold, no re-clasifica.
+- [x] **Muestra de 298 en Mongo** (150 RAG + 148 acks). Falta el bulk (14k RAG ~$2.54).
+- [x] **Foro estático** (`web/`: index+styles+app, vanilla, sin build): lista + filtros
+  + detalle (mensaje, triage labels, respuesta). Export vía `src/export_foro.py` →
+  `web/data/tickets.json`. Verificado en preview (localhost:8787). Listo para Pages.
+- [ ] ⚠️ **Curar la muestra del foro para incluir tickets de EVENTO** (hoy 0: el sampler
+  agarra los más viejos; los picos de conectores/outages quedan fuera = se pierde lo
+  más vendedor del dataset). Hacer el sampler event-aware o generar respuestas para un
+  set curado con eventos, y re-exportar.
+- [ ] **Deploy** del foro a Cloudflare Pages (repo `web/` como build output).
+- [ ] **Chat en vivo** (fase 2): Worker con Vertex embed (REST) + cosine JS + Anthropic
+  REST. Los 89 vectores caben bundled o vía Mongo Data API. Maneja service-account GCP.
+- [ ] **Bulk de respuestas** (14k RAG) cuando decidamos — o dejar la muestra si el foro
+  ya cuenta la historia.
+
+## ⏭️ Pendiente (otros)
 - [ ] Publicar el notebook EDA en Kaggle (web: Import → **Add Input** el dataset →
   Run All → Save). *El "sin gráficos" era por no montar el dataset como Input.*
 - [ ] **LinkedIn** la otra semana (viernes = mal día): ángulo del **label-audit**, o
