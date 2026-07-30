@@ -11,6 +11,7 @@ Auth = Application Default Credentials (same as src/llm.py's Vertex path).
 from __future__ import annotations
 
 import os
+import time
 
 from dotenv import load_dotenv
 
@@ -33,14 +34,30 @@ def _vertex():
 
 
 def embed_texts(texts: list[str], model: str | None = None) -> list[list[float]]:
-    """Return one embedding vector per input text (batched)."""
+    """Return one embedding vector per input text (batched).
+
+    Each batch retries with exponential backoff (2->30s) on transient errors —
+    notably Vertex 429 RESOURCE_EXHAUSTED, which a tight 240-batch loop over 24k
+    texts triggers otherwise (the endpoint has no built-in throttle here).
+    """
     model = model or EMBED_MODEL
+    client = _vertex()
     vectors: list[list[float]] = []
     batch_size = 100  # Vertex caps how many inputs per request
     # send the texts in batches, collecting one vector per input
     for i in range(0, len(texts), batch_size):
-        resp = _vertex().models.embed_content(model=model, contents=texts[i:i + batch_size])
-        vectors.extend(e.values for e in resp.embeddings)
+        batch = texts[i:i + batch_size]
+        delay = 2.0
+        for attempt in range(6):
+            try:
+                resp = client.models.embed_content(model=model, contents=batch)
+                vectors.extend(e.values for e in resp.embeddings)
+                break
+            except Exception:
+                if attempt == 5:
+                    raise  # give up after ~1 min of backoff
+                time.sleep(delay)
+                delay = min(delay * 2, 30.0)
     return vectors
 
 
