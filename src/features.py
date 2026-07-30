@@ -17,8 +17,8 @@ import numpy as np
 
 from src.embed import embed_texts
 
-DATA = "data/tickets.jsonl"
-CACHE = "data/ticket_features.npy"
+DATA = "data/tickets_v2.jsonl"
+CACHE = "data/ticket_features_v2.npy"
 
 
 def load_tickets() -> list[dict]:
