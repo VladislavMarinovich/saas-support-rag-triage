@@ -1,0 +1,11 @@
+{
+  // Config de despliegue en Cloudflare (Workers Static Assets).
+  // El foro es 100% estático: no hay Worker script (`main`), solo servimos la
+  // carpeta web/ tal cual. `npx wrangler deploy` lee esto y sube los assets.
+  "name": "saas-support-rag-triage",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    // Carpeta que se publica en la raíz del sitio (index.html, app.js, data/…).
+    "directory": "./web"
+  }
+}
