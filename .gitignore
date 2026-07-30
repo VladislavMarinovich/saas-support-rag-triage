@@ -1,7 +1,8 @@
 .venv/
-data/
+/data/
 .env
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .idea/
+.DS_Store
