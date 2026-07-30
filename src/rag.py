@@ -2,7 +2,7 @@
 refuse honestly when the chunks don't actually answer the question.
 
 This is the two-layer honesty:
-  1. retrieval (Pinecone) brings the nearest chunks — a weak pre-filter.
+  1. retrieval (cosine over MongoDB) brings the nearest chunks — a weak pre-filter.
   2. the LLM reads them and JUDGES whether they answer the question; if not, it
      admits Polaris doesn't cover it instead of inventing.
 """
