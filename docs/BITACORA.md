@@ -1,7 +1,7 @@
 # Bitácora — Polaris demo (estado vivo)
 
 > Log de estado + plan para reorientarse rápido (incl. después de un compact).
-> Se actualiza a medida que avanzamos. Fecha última: 2026-07-30.
+> Se actualiza a medida que avanzamos. Fecha última: 2026-07-30 (mid-refactor Mongo).
 
 ## Norte
 Portfolio flagship de empleabilidad (AI Engineer). Sistema: **support triage + RAG**
@@ -21,11 +21,24 @@ demo es el vehículo.
   (`docs/costs.md`, ~$3.35/$100). **ADR 0001** (quitar vector DB → cosine sobre Mongo).
 
 ## 🔧 En curso: consolidar a MongoDB (un solo store) — ver ADR 0001
-- [ ] Conectar Atlas **M0 (free forever)** → `MONGODB_URI` en `.env`.
-- [ ] Cargar 24k tickets → `polaris.tickets` (`src/mongo_store.py`, ya escrito).
-- [ ] Cargar 89 chunks del KB + sus vectores Vertex → `polaris.kb_chunks`.
-- [ ] Reescribir `vectorstore.py`/`rag.py` → **cosine sobre Mongo**, quitar Pinecone.
-- [ ] Verificar RAG (HubSpot→responde, "book flights"→rechaza, roadmap→espera honesta).
+- [x] **Atlas M0 conectado.** Cluster `polariscluster` (AWS us-east-1), DB = `polaris`,
+  `MONGODB_URI` en `.env`. `python -m src.mongo_store --ping` → OK.
+- [x] **24k tickets cargados** → `polaris.tickets` (23.994). Índices: ticket_id (unique),
+  created_at.
+- [ ] **Cargar 89 chunks KB + vectores Vertex → `polaris.kb_chunks`** (doc: chunk_id,
+  source, title, heading, text, vector). Vía `index_kb()` en el nuevo vectorstore.
+  Necesita Vertex/ADC (re-auth si expiró: `gcloud auth application-default login`).
+- [ ] **Reescribir `src/vectorstore.py`** → SIN Pinecone. Funciones:
+  `index_kb()` (chunk→embed→upsert a `polaris.kb_chunks`) y
+  `search(query, top_k=3)` que embebe la query, hace **cosine exacto** sobre los
+  vectores de Mongo (cachear en memoria) y **DEVUELVE `[(chunk_id, score, text)]`**.
+  ⚠️ Mantener EXACTO ese shape de retorno: `rag.py` hace `for cid, _score, text in hits`
+  y `answer()` retorna `(reply, hits)`. Así `rag.py` NO se toca.
+- [ ] Verificar RAG: `python -m src.rag` (HubSpot→responde, "book flights"→rechaza,
+  TikTok/roadmap→espera honesta).
+- [ ] Quitar Pinecone: `uv remove pinecone-client` (o el paquete), limpiar
+  `PINECONE_API_KEY` de `.env.example`, y actualizar cualquier import.
+- [ ] Actualizar `costs.md` y esta bitácora al cerrar.
 
 ## ⏭️ Pendiente
 - [ ] **Respuestas** (alimentan la UI): acks **templados** para 9.905 escalados (sin
