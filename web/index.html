@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polaris · Support Triage Console</title>
+  <meta name="description" content="AI support triage + RAG over a synthetic ticket dataset. A portfolio demo." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◆</span>
+      <div>
+        <h1>Polaris <span class="dim">Support Triage</span></h1>
+        <p class="tagline">Every ticket auto-classified, then answered from the knowledge base or routed to the right team.</p>
+      </div>
+    </div>
+    <a class="ghost-link" href="https://huggingface.co/datasets/VladislavMarinovich/polaris-support-tickets-v2" target="_blank" rel="noopener">Dataset ↗</a>
+  </header>
+
+  <!-- Banda de métricas: se llena desde el JSON en app.js -->
+  <section class="stats" id="stats" aria-label="Dataset overview"></section>
+
+  <section class="controls">
+    <input id="search" type="search" placeholder="Search tickets…" autocomplete="off" />
+    <select id="f-routing" aria-label="Filter by routing"><option value="">All routing</option></select>
+    <select id="f-priority" aria-label="Filter by priority"><option value="">All priority</option></select>
+    <select id="f-topic" aria-label="Filter by topic"><option value="">All topics</option></select>
+    <select id="f-kind" aria-label="Filter by response type">
+      <option value="">All responses</option>
+      <option value="rag">Answered from KB (RAG)</option>
+      <option value="templated_ack">Escalation ack</option>
+    </select>
+  </section>
+
+  <main class="layout">
+    <div class="listcol">
+      <div class="count" id="count"></div>
+      <ul class="ticket-list" id="list" aria-label="Tickets"></ul>
+    </div>
+    <article class="detail" id="detail" aria-live="polite">
+      <div class="detail-empty">Select a ticket to see its triage and response.</div>
+    </article>
+  </main>
+
+  <footer class="footnote">
+    Synthetic data — a method &amp; pipeline demo, not real customers.
+    Triage labels and answers are model-generated.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
