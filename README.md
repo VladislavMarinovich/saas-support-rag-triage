@@ -27,7 +27,7 @@ No real users, no PII.
 |---|---|
 | **Synthetic data pipeline** | scenario catalog → seeded sampler → LLM writer, with an additive **event layer** (`src/taxonomy.py`, `sampler.py`, `events.py`, `generate_event_layer.py`, `generate_dataset.py`) |
 | **Triage classifier** | logistic regression on text embeddings, one model per label (`src/features.py`, `classify.py`) |
-| **RAG** | chunk KB → embed → Pinecone → grounded answer or **honest refusal** (`src/chunk_kb.py`, `embed.py`, `vectorstore.py`, `rag.py`) |
+| **RAG** | chunk KB → embed → cosine over MongoDB → grounded answer or **honest refusal** (`src/chunk_kb.py`, `embed.py`, `vectorstore.py`, `rag.py`) |
 | **Unified pipeline** | classify → gate on routing: `kb_autoresolve` → RAG answers; else → escalate (`src/triage.py`) |
 
 ## Highlights
@@ -64,8 +64,12 @@ documented rather than hidden — that transparency is the point.
 
 ## Stack
 
-Python · scikit-learn · Pinecone (vector search) · Gemini on Vertex AI
-(generation + `text-embedding-005`) · Anthropic Haiku · pandas / matplotlib · `uv`.
+Python · scikit-learn · MongoDB (single store: tickets · KB · vectors) · Gemini on
+Vertex AI (generation + `text-embedding-005`) · Anthropic Haiku · pandas / matplotlib · `uv`.
+
+> **Retrieval:** exact brute-force cosine over the 89 KB vectors in MongoDB — no
+> dedicated vector DB. See [ADR 0001](docs/adr/0001-retrieval-without-a-dedicated-vector-db.md)
+> for the right-sizing rationale and when a vector index *would* be warranted.
 
 ---
 
