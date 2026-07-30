@@ -1,7 +1,7 @@
 // Foro Polaris — vanilla JS. Carga el export estático y arma lista + filtros + detalle.
 // Sin framework ni build step: se sirve tal cual desde Cloudflare Pages.
 
-const state = { all: [], filtered: [], selected: null };
+const state = { all: [], filtered: [], selected: null, page: 0, perPage: 25 };
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
@@ -63,11 +63,16 @@ async function load() {
 function buildFilters() {
   const uniq = (k) => [...new Set(state.all.map((t) => t[k]).filter(Boolean))].sort();
   fillSelect("#f-routing", uniq("routing"), pretty);
+  fillSelect("#f-type", uniq("type"), pretty);
   fillSelect("#f-priority", ["critical", "high", "medium", "low"].filter(
     (p) => state.all.some((t) => t.priority === p)));
   fillSelect("#f-topic", uniq("topic"), pretty);
-  ["#search", "#f-routing", "#f-priority", "#f-topic", "#f-kind"].forEach((sel) =>
-    $(sel).addEventListener("input", apply));
+  // meses presentes en la data (YYYY-MM), siempre en orden cronológico
+  const months = [...new Set(state.all.map((t) => (t.created_at || "").slice(0, 7)).filter(Boolean))].sort();
+  fillSelect("#f-month", months);
+  // cualquier cambio de filtro/orden vuelve a la página 1
+  ["#search", "#f-routing", "#f-type", "#f-priority", "#f-topic", "#f-month", "#f-kind", "#sort"]
+    .forEach((sel) => $(sel).addEventListener("input", () => { state.page = 0; apply(); }));
 }
 function fillSelect(sel, values, label = (x) => x) {
   const el = $(sel);
@@ -93,25 +98,39 @@ function renderStats() {
     `<div class="stat"><div class="num">${esc(num)}</div><div class="lbl">${esc(lbl)}</div></div>`).join("");
 }
 
-// ---- aplicar filtros + búsqueda ----
+// ---- aplicar filtros + búsqueda + orden ----
 function apply() {
   const q = $("#search").value.trim().toLowerCase();
   const fr = $("#f-routing").value, fp = $("#f-priority").value;
-  const ft = $("#f-topic").value, fk = $("#f-kind").value;
+  const fty = $("#f-type").value, fto = $("#f-topic").value;
+  const fm = $("#f-month").value, fk = $("#f-kind").value;
   state.filtered = state.all.filter((t) =>
-    (!fr || t.routing === fr) && (!fp || t.priority === fp) &&
-    (!ft || t.topic === ft) && (!fk || t.response_kind === fk) &&
+    (!fr || t.routing === fr) && (!fty || t.type === fty) &&
+    (!fp || t.priority === fp) && (!fto || t.topic === fto) &&
+    (!fm || (t.created_at || "").startsWith(fm)) && (!fk || t.response_kind === fk) &&
     (!q || (t.body + " " + (t.subject || "")).toLowerCase().includes(q)));
+
+  // ordenar por fecha según el toggle (desc = más nueva primero)
+  const dir = $("#sort").value === "asc" ? 1 : -1;
+  state.filtered.sort((a, b) =>
+    dir * String(a.created_at).localeCompare(String(b.created_at)));
   renderList();
 }
 
-// ---- lista ----
+// ---- lista (paginada) ----
 function renderList() {
   const list = $("#list");
-  $("#count").textContent = `${state.filtered.length} ticket${state.filtered.length === 1 ? "" : "s"}`;
+  const total = state.filtered.length;
+  const pages = Math.max(1, Math.ceil(total / state.perPage));
+  state.page = Math.min(state.page, pages - 1);           // clamp por si el filtro achicó
+  const start = state.page * state.perPage;
+  const pageItems = state.filtered.slice(start, start + state.perPage);
 
-  list.innerHTML = state.filtered.slice(0, 400).map((t, i) => `
-    <li class="ticket ${state.selected === t.ticket_id ? "active" : ""}" data-i="${i}">
+  $("#count").textContent = `${total} ticket${total === 1 ? "" : "s"}`;
+
+  // data-i = índice GLOBAL en state.filtered (no el de la página), para seleccionar bien
+  list.innerHTML = pageItems.map((t, i) => `
+    <li class="ticket ${state.selected === t.ticket_id ? "active" : ""}" data-i="${start + i}">
       <div class="row1">
         <span class="badge route-${esc(t.routing)}">${esc(pretty(t.routing))}</span>
         <span class="badge prio-${esc(t.priority)}">${esc(t.priority)}</span>
@@ -123,6 +142,20 @@ function renderList() {
 
   list.querySelectorAll(".ticket").forEach((el) =>
     el.addEventListener("click", () => select(state.filtered[+el.dataset.i])));
+
+  renderPager(pages);
+}
+
+// ---- controles de paginación ----
+function renderPager(pages) {
+  const pager = $("#pager");
+  if (pages <= 1) { pager.innerHTML = ""; return; }
+  pager.innerHTML = `
+    <button id="prev" ${state.page === 0 ? "disabled" : ""}>← Prev</button>
+    <span class="page-ind">Page ${state.page + 1} of ${pages}</span>
+    <button id="next" ${state.page >= pages - 1 ? "disabled" : ""}>Next →</button>`;
+  $("#prev").onclick = () => { if (state.page > 0) { state.page--; renderList(); $("#list").scrollTop = 0; } };
+  $("#next").onclick = () => { if (state.page < pages - 1) { state.page++; renderList(); $("#list").scrollTop = 0; } };
 }
 
 // ---- detalle ----

@@ -25,12 +25,18 @@
   <section class="controls">
     <input id="search" type="search" placeholder="Search tickets…" autocomplete="off" />
     <select id="f-routing" aria-label="Filter by routing"><option value="">All routing</option></select>
+    <select id="f-type" aria-label="Filter by type"><option value="">All types</option></select>
     <select id="f-priority" aria-label="Filter by priority"><option value="">All priority</option></select>
     <select id="f-topic" aria-label="Filter by topic"><option value="">All topics</option></select>
+    <select id="f-month" aria-label="Filter by month"><option value="">All dates</option></select>
     <select id="f-kind" aria-label="Filter by response type">
       <option value="">All responses</option>
       <option value="rag">Answered from KB (RAG)</option>
       <option value="templated_ack">Escalation ack</option>
+    </select>
+    <select id="sort" aria-label="Sort order">
+      <option value="desc">Newest first</option>
+      <option value="asc">Oldest first</option>
     </select>
   </section>
 
@@ -38,6 +44,7 @@
     <div class="listcol">
       <div class="count" id="count"></div>
       <ul class="ticket-list" id="list" aria-label="Tickets"></ul>
+      <div class="pager" id="pager"></div>
     </div>
     <article class="detail" id="detail" aria-live="polite">
       <div class="detail-empty">Select a ticket to see its triage and response.</div>

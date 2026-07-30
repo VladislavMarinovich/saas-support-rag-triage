@@ -163,3 +163,12 @@ h1 .dim { color: var(--text-dim); font-weight: 500; }
 .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; border-top: 1px solid var(--border); }
 .listcol { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
 .count { font-size: .78rem; color: var(--text-dim); padding: 0 .2rem; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .3rem 0 .2rem; }
+.pager button {
+  font: inherit; font-size: .82rem; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: .4rem .8rem; cursor: pointer;
+}
+.pager button:hover:not(:disabled) { border-color: var(--accent); }
+.pager button:disabled { opacity: .4; cursor: default; }
+.page-ind { font-size: .8rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
