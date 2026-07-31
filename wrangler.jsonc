@@ -1,11 +1,12 @@
 {
-  // Config de despliegue en Cloudflare (Workers Static Assets).
-  // El foro es 100% estático: no hay Worker script (`main`), solo servimos la
-  // carpeta web/ tal cual. `npx wrangler deploy` lee esto y sube los assets.
+  // Config de despliegue en Cloudflare.
+  // El Worker (worker/index.js) maneja POST /api/triage (la vista cliente en vivo) y
+  // delega todo lo demás a los assets estáticos vía el binding ASSETS (foro + /cliente).
   "name": "saas-support-rag-triage",
   "compatibility_date": "2025-06-01",
+  "main": "worker/index.js",
   "assets": {
-    // Carpeta que se publica en la raíz del sitio (index.html, app.js, data/…).
-    "directory": "./web"
+    "directory": "./web",
+    "binding": "ASSETS"
   }
 }
