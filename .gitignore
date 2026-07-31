@@ -6,3 +6,8 @@ __pycache__/
 .ipynb_checkpoints/
 .idea/
 .DS_Store
+# Secretos que NUNCA deben commitearse
+.dev.vars
+polaris-triage-demo-*.json
+*-service-account*.json
+*serviceaccount*.json
