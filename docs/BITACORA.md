@@ -26,9 +26,11 @@
 Prod `polaris.marinovich.co` = pendiente (custom domain), se hace al final.
 
 ### ⏭️ PRÓXIMA SESIÓN (en orden)
-1. **GIF del demo** → Vlad graba con `Cmd+Shift+5` (nativo Mac) el flujo de GA4 (respuesta larga
-   = tipeo lucido) → pasa la ruta del `.mov` → yo convierto a GIF optimizado (ffmpeg, método paleta)
-   → `docs/assets/demo.gif` → hero del README + link vivo.
+1. ✅ **GIF del demo** — HECHO (31-jul, commit `8e89b49`). Flujo GA4 grabado → `docs/assets/demo.gif`
+   (método paleta ffmpeg, fps 13, 1000px, 2.1 MB) → nueva sección **▶️ Live demo** como hero del README.
+   Nota: **URL del Worker NO publicada aún** (decisión A) — esperar hardening + `polaris.marinovich.co`
+   para no exponer Vertex a tráfico anónimo ($5 de crédito). (Arreglo previo: ffmpeg roto por x265 desajustado
+   → `brew reinstall ffmpeg`.)
 2. **Chat multi-turno** (`/cliente`) — que el cliente responda "gracias/aún nada" y siga el hilo.
    Requiere estado de conversación + turnos. NO empezado.
 3. **Persistencia Worker→Mongo** — guardar cada ticket+respuesta live en `polaris.tickets`
