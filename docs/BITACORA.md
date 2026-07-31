@@ -105,6 +105,15 @@ Turnstile enforced. Todo en DEV (`workers.dev`); prod (`polaris.marinovich.co`) 
 - [x] ✅ **VISTA EN VIVO VERIFICADA (31-jul)** — `/cliente` en producción: Turnstile pasó,
   Worker → JWT SA → Vertex embed → cosine → **Gemini** devolvió respuesta grounded desde la
   KB + triage correcto (connectors/how_to/medium/kb_autoresolve). Flujo end-to-end OK en vivo.
+- [x] ✅ **Capa UX de la vista cliente (31-jul)** — todo verificado en vivo:
+  - Respuestas en **pasos numerados** + **Nota** de caveats + tono cálido (prompt del Worker).
+  - **Vista hilo**: post original → "✓ Answered by Polaris AI" → **fuentes reales de KB** →
+    "¿Útil? Sí/No/Solicitar humano" → triage colapsable.
+  - **Streaming SSE real**: Worker `streamGenerateContent` parte answer/triage en `---TRIAGE---`,
+    emite eventos `token`+`result`; cliente tipea en vivo con cursor. (Gemini es tan rápido que
+    el tipeo se ve <1.5s → pendiente opcional: **reveal pausado** para que se vea el efecto/GIF.)
+- [ ] Opcional: reveal pausado del tipeo (buffer + pace visual) para el GIF.
+- [ ] **GIF del demo** para el README (Vlad graba con Kap tras el reveal pausado).
 - [ ] Hardening diferido: rate-limit por IP (regla WAF o KV) + tope diario + fallback canned.
 - [ ] Custom domain `polaris.marinovich.co` (prod) cuando la vista en vivo esté verde.
 
