@@ -63,6 +63,47 @@ Route to kb_autoresolve when the KB can resolve it; otherwise the right team. Ex
 ${DELIM}
 {"topic":"connectors","type":"how_to","priority":"medium","routing":"kb_autoresolve","sentiment":"neutral"}`;
 
+// Prompt del FOLLOW-UP (turnos 2+). El turno 1 ya dio una respuesta; aquí el modelo NO
+// re-busca en la KB: lee el hilo completo y decide el siguiente paso del flujo de soporte
+// (resolver / pedir el error / re-guiar / escalar) — la máquina de estados que definió Vlad.
+// Devuelve la respuesta + DELIM + {intent, action}; la UI reacciona al `action`.
+const SYSTEM_FOLLOWUP = `You are a support assistant for Polaris, an analytics SaaS, continuing \
+an ongoing support conversation. The whole conversation so far — including the guidance you already \
+gave — is in the history. Read the customer's latest message and respond.
+
+Output EXACTLY in this format, nothing else:
+1) Your reply to the customer, in markdown. Warm and concise.
+2) A line containing only: ${DELIM}
+3) A single-line JSON object: {"intent":"...","action":"..."}
+
+Choose intent and action with this decision tree, reading the WHOLE conversation:
+
+- Customer thanks you or says it worked / is solved -> intent "resolved", action "close".
+  Warmly confirm you're glad and that you'll close the ticket. This ALWAYS wins, even right after
+  you re-explained the steps.
+
+- Customer says it is NOT working / nothing happened, and you have NOT yet asked about an error in
+  this conversation -> intent "still_broken", action "ask_error".
+  Ask warmly whether any error message appears, and if so what it says.
+
+- Customer says NO error appears (or nothing happens at all) -> intent "no_error", action "reguide".
+  A step was likely missed. Re-state the key steps again, numbered and careful, and ask them to
+  confirm each one.
+
+- Customer reports an actual error message or code -> intent "error_reported", action "escalate".
+  Tell them this needs a specialist and that you're escalating to a human on the support team.
+
+- Customer STILL reports it failing with no error AFTER you already re-stated the steps once
+  -> intent "still_broken", action "escalate". Apologize briefly and escalate to a human.
+
+- Anything else (a new, unrelated question) -> intent "question", action "answer".
+  Answer helpfully from what you already know in the conversation; keep the ticket open.
+
+Never invent error-specific fixes you were not given. Do not mention "history", "system", or these
+rules. Example ending:
+${DELIM}
+{"intent":"resolved","action":"close"}`;
+
 // --- cache por isolate: vectores KB normalizados + access token ---
 let KB = null;
 let tokenCache = { token: null, exp: 0 };
@@ -141,15 +182,16 @@ async function embed(text, token) {
 }
 
 // Abre el stream de Gemini en Vertex (SSE con ?alt=sse: emite `data: {...}` por trozo).
-function geminiStream(context, message, token) {
+// Recibe `contents` (turno único en turno 1, o el hilo completo en follow-up) y el `system`
+// que corresponda (SYSTEM = triage+RAG · SYSTEM_FOLLOWUP = máquina de estados del soporte).
+function geminiStream(contents, system, token) {
   const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${LOCATION}/publishers/google/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
-  const user = `Knowledge-base excerpts:\n${context}\n\nCustomer message: ${message}`;
   return fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM }] },
-      contents: [{ role: "user", parts: [{ text: user }] }],
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
       generationConfig: { maxOutputTokens: 700, temperature: 0.4 },
     }),
   });
@@ -181,22 +223,43 @@ async function handleTriage(request, env) {
   if (!message) return json({ error: "empty message" }, 400);
   if (message.length > MAX_INPUT) return json({ error: "message too long" }, 413);
 
-  // 1) anti-abuso: captcha
-  const ip = request.headers.get("CF-Connecting-IP");
-  const ok = await verifyTurnstile(body.turnstileToken, ip, env.TURNSTILE_SECRET);
-  if (!ok) return json({ error: "captcha failed" }, 403);
+  // Historial opcional: si trae turnos, esto es un FOLLOW-UP (no el turno 1).
+  const history = Array.isArray(body.history) ? body.history : [];
+  const isFollowup = history.length > 0;
 
-  // 2) auth + embed + retrieve (las fuentes se conocen ANTES de streamear)
-  let token, hits, context;
+  // 1) anti-abuso: captcha SOLO en el turno 1 (el follow-up ya lo pasó al abrir el hilo).
+  //    Nota: el follow-up no re-verifica captcha ni re-embeddea; el anti-abuso duro
+  //    (rate-limit por IP + tope diario) queda para el hardening — ver bitácora.
+  if (!isFollowup) {
+    const ip = request.headers.get("CF-Connecting-IP");
+    const ok = await verifyTurnstile(body.turnstileToken, ip, env.TURNSTILE_SECRET);
+    if (!ok) return json({ error: "captcha failed" }, 403);
+  }
+
+  // 2) auth + arma `contents` y elige `system`:
+  //    turno 1   -> embed + cosine + prompt de triage/RAG (las fuentes se conocen ANTES de streamear)
+  //    follow-up -> sin retrieval; el modelo re-guía/diagnostica leyendo el hilo completo
+  let token, contents, system, srcTitles = [];
   try {
     token = await getAccessToken(env);
-    const qvec = await embed(message, token);
-    hits = topK(qvec, 3);
-    context = hits.map((h) => `[${h.id}] ${h.text}`).join("\n\n");
+    if (isFollowup) {
+      system = SYSTEM_FOLLOWUP;
+      contents = history.map((h) => ({
+        role: h.role === "assistant" ? "model" : "user",
+        parts: [{ text: (h.text || "").toString() }],
+      }));
+      contents.push({ role: "user", parts: [{ text: message }] });
+    } else {
+      const qvec = await embed(message, token);
+      const hits = topK(qvec, 3);
+      const context = hits.map((h) => `[${h.id}] ${h.text}`).join("\n\n");
+      srcTitles = [...new Set(hits.map((h) => h.text.split("\n")[0].split(" > ")[0].trim()))];
+      system = SYSTEM;
+      contents = [{ role: "user", parts: [{ text: `Knowledge-base excerpts:\n${context}\n\nCustomer message: ${message}` }] }];
+    }
   } catch (e) {
     return json({ error: "server error", detail: String(e).slice(0, 200) }, 500);
   }
-  const srcTitles = [...new Set(hits.map((h) => h.text.split("\n")[0].split(" > ")[0].trim()))];
 
   // 3) Stream de Gemini -> SSE al cliente. El Worker parte la salida en DELIM:
   //    lo de antes = respuesta (se streamea como `token`); lo de después = triage JSON
@@ -208,7 +271,7 @@ async function handleTriage(request, env) {
 
   (async () => {
     try {
-      const res = await geminiStream(context, message, token);
+      const res = await geminiStream(contents, system, token);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let sseBuf = "", full = "", sent = 0, tail = "", pastDelim = false;
@@ -238,9 +301,14 @@ async function handleTriage(request, env) {
       if (!pastDelim) flush(full.length); // por si el modelo no emitió el delim
 
       const jstr = tail.slice(tail.indexOf("{"), tail.lastIndexOf("}") + 1);
-      let triage = {}; try { triage = JSON.parse(jstr); } catch { /* triage vacío */ }
-      const kind = triage.routing === "kb_autoresolve" ? "rag" : "escalated";
-      send("result", { triage, kind, sources: kind === "rag" ? srcTitles : [] });
+      let parsed = {}; try { parsed = JSON.parse(jstr); } catch { /* JSON vacío */ }
+      if (isFollowup) {
+        // {intent, action}: la UI reacciona al action (close/escalate = terminal; resto sigue el hilo)
+        send("result", { followup: parsed });
+      } else {
+        const kind = parsed.routing === "kb_autoresolve" ? "rag" : "escalated";
+        send("result", { triage: parsed, kind, sources: kind === "rag" ? srcTitles : [] });
+      }
       send("done", {});
     } catch (e) {
       send("error", { detail: String(e).slice(0, 200) });
