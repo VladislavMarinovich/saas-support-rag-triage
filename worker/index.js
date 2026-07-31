@@ -25,7 +25,7 @@ const EMBED_MODEL = "text-embedding-005";
 const GEMINI_MODEL = "gemini-2.5-flash-lite";    // LLM en Vertex (verificado)
 const MAX_INPUT = 2000;                           // cap de longitud del mensaje
 
-// Etiquetas válidas del triage — se las pasamos a Claude para que no invente valores.
+// Etiquetas válidas del triage — se las pasamos al LLM para que no invente valores.
 const LABELS = {
   topic: ["dashboards", "connectors", "reports", "alerts", "billing", "attribution", "users_workspace", "api", "data_quality"],
   type: ["bug", "how_to", "feature_request", "misconfiguration", "question", "feedback", "incident"],
@@ -38,10 +38,14 @@ const LABELS = {
 const SYSTEM = `You are a support assistant for Polaris, an analytics SaaS. You get \
 knowledge-base excerpts and a customer message. Return ONLY a JSON object, no prose around it:
 {"answer": string, "triage": {"topic","type","priority","routing","sentiment"}}
-Rules for "answer":
-- If the excerpts answer the question, reply concisely and helpfully, grounded ONLY in them.
-- If they do NOT answer it, say so honestly (don't invent). For "when will you add X?" give an
-  honest holding answer (no date, team is working on it).
+Rules for "answer" (markdown, grounded ONLY in the excerpts):
+- Open with one warm sentence that acknowledges the customer's specific situation in their words.
+- If the excerpts describe a procedure, give the steps as a **numbered list** — preserve every
+  step, do NOT collapse them into a paragraph.
+- Put any important caveat (e.g. "only an Admin can do this", required permissions) on a final
+  line starting with "**Note:**".
+- If the excerpts do NOT answer it, say so honestly (don't invent). For "when will you add X?"
+  give an honest holding answer (no date, team is working on it) — and no steps.
 - Do not mention "excerpts" or "context".
 Rules for "triage": pick EXACTLY one value per field from these allowed sets:
 ${JSON.stringify(LABELS)}
@@ -185,7 +189,12 @@ async function handleTriage(request, env) {
 
     const routing = out?.triage?.routing;
     const kind = routing === "kb_autoresolve" ? "rag" : "escalated";
-    return json({ answer: out.answer, triage: out.triage, kind });
+    // Fuentes REALES = títulos de los artículos recuperados (1ª línea del chunk,
+    // antes del " > heading"), únicos. Solo se muestran si la respuesta es grounded.
+    const sources = kind === "rag"
+      ? [...new Set(hits.map((h) => h.text.split("\n")[0].split(" > ")[0].trim()))]
+      : [];
+    return json({ answer: out.answer, triage: out.triage, kind, sources });
   } catch (e) {
     return json({ error: "server error", detail: String(e).slice(0, 200) }, 500);
   }
