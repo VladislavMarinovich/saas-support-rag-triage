@@ -68,6 +68,24 @@
     .triage-fold .chip { font-size: .72rem; background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 8px; padding: .2rem .55rem; }
     .triage-fold .chip b { color: var(--text-dim); font-weight: 600; text-transform: capitalize; }
+    /* estados terminales del badge de la respuesta (follow-up) */
+    .verified.escalated { color: #b45309; }
+    .verified.resolved { color: #15803d; }
+    /* composer de follow-ups (continuar la conversación) */
+    .composer { display: flex; gap: .5rem; align-items: flex-end; margin-top: .9rem; }
+    .composer textarea { flex: 1; font: inherit; color: var(--text); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 9px; padding: .55rem .7rem; resize: vertical; min-height: 2.4rem; }
+    .composer textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    .composer button { font: inherit; font-weight: 600; color: #fff; background: var(--accent);
+      border: none; border-radius: 9px; padding: .55rem 1rem; cursor: pointer; }
+    .composer button:disabled { opacity: .55; cursor: default; }
+    /* nota de cierre del hilo (resuelto / escalado) */
+    .thread-end { margin-top: .9rem; padding: .7rem .9rem; border-radius: 10px; font-size: .82rem; text-align: center; }
+    .thread-end.resolved { background: color-mix(in srgb, #15803d 12%, var(--bg)); color: #15803d;
+      border: 1px solid color-mix(in srgb, #15803d 30%, var(--border)); }
+    .thread-end.escalated { background: color-mix(in srgb, #b45309 12%, var(--bg)); color: #b45309;
+      border: 1px solid color-mix(in srgb, #b45309 30%, var(--border)); }
+    .err-inline { color: #c02626; font-size: .85rem; }
     .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; }
     .backlink { color: var(--accent); text-decoration: none; font-size: .82rem; }
   </style>
