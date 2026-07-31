@@ -102,8 +102,9 @@ Turnstile enforced. Todo en DEV (`workers.dev`); prod (`polaris.marinovich.co`) 
 - [x] Org policy `iam.disableServiceAccountKeyCreation` desactivada SOLO en el proyecto
   (Vlad, superadmin). SA `polaris-worker@polaris-triage-demo` con rol Usuario de Vertex AI.
 - [x] Endpoints Vertex verificados por ADC: embeddings + Gemini responden 200, JSON OK.
-- [ ] ⚠️ **PENDIENTE MAÑANA: probar `/cliente` EN VIVO** (sin `?mock`) contra el Worker
-  desplegado. Si falla, ver logs del Worker (Observability). Ese es el gate de la "joya".
+- [x] ✅ **VISTA EN VIVO VERIFICADA (31-jul)** — `/cliente` en producción: Turnstile pasó,
+  Worker → JWT SA → Vertex embed → cosine → **Gemini** devolvió respuesta grounded desde la
+  KB + triage correcto (connectors/how_to/medium/kb_autoresolve). Flujo end-to-end OK en vivo.
 - [ ] Hardening diferido: rate-limit por IP (regla WAF o KV) + tope diario + fallback canned.
 - [ ] Custom domain `polaris.marinovich.co` (prod) cuando la vista en vivo esté verde.
 
