@@ -19,6 +19,7 @@ const MOCK = new URLSearchParams(location.search).has("mock");
 // role: "user" | "assistant"  ·  text: mensaje / respuesta (markdown, sin el triage JSON).
 const history = [];
 let turnSeq = 0; // ids únicos por respuesta para no chocar refs entre turnos
+let ticketId = null; // id de la conversación (lo genera el server en el turno 1; lo reenviamos en follow-ups)
 
 // --- helpers de render (mismo mini-markdown seguro que el foro) ---
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
@@ -158,6 +159,7 @@ async function submit(ev) {
   try {
     const { full, result } = await runStream(refs, { subject, message, turnstileToken: token });
     finalizeReply(refs, result, full);
+    ticketId = result.ticketId || null;           // el server generó el id de la conversación
     history.push({ role: "user", text: message }, { role: "assistant", text: full });
     mountComposer();                              // habilita follow-ups
   } catch (e) {
@@ -174,7 +176,7 @@ async function sendFollowup(text) {
   const refs = appendTurn(text);                  // añade el post del cliente + skeleton de respuesta
   setComposerDisabled(true);
   try {
-    const { full, result } = await runStream(refs, { message: text, history: history.slice() });
+    const { full, result } = await runStream(refs, { message: text, history: history.slice(), ticketId });
     const action = (result.followup && result.followup.action) || "answer";
     finalizeFollowup(refs, full, action);
     history.push({ role: "user", text }, { role: "assistant", text: full });
