@@ -34,3 +34,13 @@ expensive tool only where it adds value; templates where they suffice.
 - **Projected with full UI answers: ≈ $6** of $100.
 
 Headroom is not the constraint — time is.
+
+## Observed actual (real billing)
+
+- **2026-07-30 — ~7,300 COP ≈ $1.80 USD** for the whole build to date (24k-ticket
+  generation + a 1,398-response sample + all embeddings + live-path testing).
+- Tracks the estimates and lands **under $2 for a complete end-to-end system**. The
+  low figure is by design, not luck: Gemini/Flash-Lite where volume is high, **templated
+  acks (no LLM) for escalations**, and exact cosine instead of a paid vector DB.
+- Headline for interviews: *end-to-end synthetic-data + RAG + triage system, built for
+  under $2.*
