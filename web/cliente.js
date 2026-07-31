@@ -67,35 +67,58 @@ async function submit(ev) {
 
   // arma el hilo YA (el post del cliente) y streamea la respuesta dentro
   const refs = buildSkeleton({ subject, message });
-  let answerText = "";
-  const onToken = (t) => {
-    answerText += t;
-    refs.body.innerHTML = mdToHtml(answerText) + '<span class="cursor"></span>';
+
+  // Máquina de escribir: los tokens del stream ENTRAN a `buffer`; se REVELAN a ritmo
+  // legible (desacopla la llegada por red de la aparición visual). Gemini es tan rápido
+  // que sin esto el tipeo se ve un flash; con esto se ve el efecto y luce en el GIF.
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const CPS = reduce ? 1e6 : 190;      // velocidad de revelado (chars/segundo)
+  let full = "", streaming = true, start = null;
+  const render = (text) => {
+    const typing = streaming || text.length < full.length;
+    refs.body.innerHTML = mdToHtml(text) + (typing ? '<span class="cursor"></span>' : "");
     refs.body.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
+  // Revela por TIEMPO transcurrido (no un delta fijo por tick): así aunque el navegador
+  // throttlee setInterval, muestra los chars que correspondan al tiempo. `full` crece con
+  // los tokens del stream; el reveal lo "persigue" a ritmo constante.
+  const typewriter = new Promise((resolve) => {
+    const id = setInterval(() => {
+      if (!full.length) return;                        // aún no llega texto
+      if (start === null) start = performance.now();
+      const want = Math.floor(((performance.now() - start) / 1000) * CPS);
+      render(full.slice(0, Math.min(want, full.length)));
+      if (want >= full.length && !streaming) { clearInterval(id); resolve(); }
+    }, 30);
+  });
 
   try {
+    let result = null;
     if (MOCK) {
       const m = mockResponse(message);
-      for (const piece of (m.answer.match(/\S+\s*/g) || [])) { onToken(piece); await sleep(35); }
-      finalizeReply(refs, m, answerText);
+      full = m.answer;                 // el typewriter lo pacea por tiempo
+      result = m;
     } else {
       const res = await fetch("/api/triage", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, message, turnstileToken: token }),
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-      // consume el stream SSE: `token` (texto en vivo) + `result` (triage/fuentes al final)
-      let result = null, streamErr = null;
+      // consume el stream SSE: `token` (texto que acumula full) + `result` (triage/fuentes)
+      let streamErr = null;
       await readSSE(res, (event, data) => {
-        if (event === "token") onToken(data.t || "");
+        if (event === "token") full += (data.t || "");
         else if (event === "result") result = data;
         else if (event === "error") streamErr = data.detail || "stream error";
       });
       if (streamErr) throw new Error(streamErr);
-      finalizeReply(refs, result || {}, answerText);
     }
+    streaming = false;
+    await typewriter;                  // espera a que termine de revelar TODO el texto
+    finalizeReply(refs, result || {}, full);
   } catch (e) {
+    streaming = false;                 // deja que el intervalo del typewriter se detenga
+    full = "";
     $("#answer").hidden = true;
     $("#err").textContent = "Sorry, something went wrong. Please try again.";
     if (window.turnstile) turnstile.reset();
