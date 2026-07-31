@@ -208,8 +208,41 @@ async function verifyTurnstile(token, ip, secret) {
   return data.success === true;
 }
 
+// ---------- persistencia (Cloudflare D1) ----------
+// Guardado con `if (!env.DB)`: si el binding no existe todavía, la persistencia es un
+// no-op y el resto (triage + multi-turno) sigue funcionando igual. Cada ticket = una fila.
+async function saveTurn1(env, { ticketId, subject, message, answer, triage, kind }) {
+  if (!env.DB) return;
+  const now = Date.now();
+  const thread = JSON.stringify([{ role: "user", text: message }, { role: "assistant", text: answer }]);
+  const status = kind === "escalated" ? "escalated" : "open";
+  await env.DB.prepare(
+    "INSERT INTO tickets (ticket_id, created, updated, subject, thread, triage, status) VALUES (?,?,?,?,?,?,?)"
+  ).bind(ticketId, now, now, subject || "", thread, JSON.stringify(triage || {}), status).run();
+}
+
+// El cliente ya manda el historial completo en cada follow-up, así que reconstruimos el
+// hilo sin leer la fila: history + (este turno). Actualizamos thread + status.
+async function saveFollowup(env, { ticketId, history, message, answer, action }) {
+  if (!env.DB || !ticketId) return;
+  const now = Date.now();
+  const full = [...history, { role: "user", text: message }, { role: "assistant", text: answer }];
+  const status = action === "close" ? "resolved" : action === "escalate" ? "escalated" : "open";
+  await env.DB.prepare(
+    "UPDATE tickets SET thread=?, updated=?, status=? WHERE ticket_id=?"
+  ).bind(JSON.stringify(full), now, status, ticketId).run();
+}
+
+async function listTickets(env, limit = 50) {
+  if (!env.DB) return [];
+  const { results } = await env.DB.prepare(
+    "SELECT ticket_id, created, updated, subject, thread, triage, status FROM tickets ORDER BY created DESC LIMIT ?"
+  ).bind(limit).all();
+  return results || [];
+}
+
 // ---------- handler ----------
-async function handleTriage(request, env) {
+async function handleTriage(request, env, ctx) {
   const json = (obj, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
 
@@ -226,6 +259,9 @@ async function handleTriage(request, env) {
   // Historial opcional: si trae turnos, esto es un FOLLOW-UP (no el turno 1).
   const history = Array.isArray(body.history) ? body.history : [];
   const isFollowup = history.length > 0;
+  // ticket_id: identifica la CONVERSACIÓN (no al usuario). Turno 1 lo genera el server;
+  // follow-up lo trae el cliente para actualizar la misma fila.
+  const ticketId = isFollowup ? (body.ticketId || null) : crypto.randomUUID();
 
   // 1) anti-abuso: captcha SOLO en el turno 1 (el follow-up ya lo pasó al abrir el hilo).
   //    Nota: el follow-up no re-verifica captcha ni re-embeddea; el anti-abuso duro
@@ -304,10 +340,13 @@ async function handleTriage(request, env) {
       let parsed = {}; try { parsed = JSON.parse(jstr); } catch { /* JSON vacío */ }
       if (isFollowup) {
         // {intent, action}: la UI reacciona al action (close/escalate = terminal; resto sigue el hilo)
-        send("result", { followup: parsed });
+        send("result", { followup: parsed, ticketId });
+        // persiste sin bloquear el cierre del stream: actualiza la fila del ticket
+        ctx.waitUntil(saveFollowup(env, { ticketId, history, message, answer: full, action: parsed.action }));
       } else {
         const kind = parsed.routing === "kb_autoresolve" ? "rag" : "escalated";
-        send("result", { triage: parsed, kind, sources: kind === "rag" ? srcTitles : [] });
+        send("result", { triage: parsed, kind, sources: kind === "rag" ? srcTitles : [], ticketId });
+        ctx.waitUntil(saveTurn1(env, { ticketId, subject: body.subject, message, answer: full, triage: parsed, kind }));
       }
       send("done", {});
     } catch (e) {
@@ -323,10 +362,17 @@ async function handleTriage(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/api/triage" && request.method === "POST") {
-      return handleTriage(request, env);
+      return handleTriage(request, env, ctx);
+    }
+    // tickets en vivo para el foro del operador (los que capturó /cliente)
+    if (url.pathname === "/api/tickets" && request.method === "GET") {
+      const tickets = await listTickets(env);
+      return new Response(JSON.stringify({ tickets }), {
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+      });
     }
     // todo lo demás -> assets estáticos (foro + vista cliente)
     return env.ASSETS.fetch(request);
