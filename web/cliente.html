@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polaris · Contact Support</title>
+  <meta name="description" content="Ask Polaris support — the assistant answers from the knowledge base or routes you to the right team, live." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Cloudflare Turnstile (captcha anti-abuso). Se valida server-side en el Worker. -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    /* Vista cliente: más cálida y centrada que el foro de operador. Reusa las
+       variables de tema y los estilos de .response-body de styles.css. */
+    .wrap { max-width: 640px; margin: 0 auto; padding: 0 1.2rem 3rem; }
+    .intro { text-align: center; padding: 2.2rem 0 1.4rem; }
+    .intro h1 { font-size: 1.5rem; margin: 0 0 .4rem; letter-spacing: -.02em; }
+    .intro p { color: var(--text-dim); margin: 0; font-size: .95rem; }
+    .card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.3rem; box-shadow: var(--shadow); }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: .35rem; }
+    .field input, .field textarea { width: 100%; font: inherit; color: var(--text);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: .6rem .75rem; }
+    .field textarea { min-height: 130px; resize: vertical; }
+    .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    .submit { width: 100%; font: inherit; font-weight: 600; color: #fff; background: var(--accent);
+      border: none; border-radius: 10px; padding: .7rem; cursor: pointer; margin-top: .2rem; }
+    .submit:disabled { opacity: .55; cursor: default; }
+    .err { color: #c02626; font-size: .85rem; margin-top: .6rem; min-height: 1rem; }
+    .answer { margin-top: 1.2rem; }
+    .answer-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .7rem; }
+    .answer-kind { font-size: .75rem; font-weight: 700; color: var(--accent); }
+    .triage-line { font-size: .75rem; color: var(--text-dim); margin-top: .9rem;
+      padding-top: .8rem; border-top: 1px solid var(--border); }
+    .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; }
+    .backlink { color: var(--accent); text-decoration: none; font-size: .82rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="intro">
+      <h1>How can we help?</h1>
+      <p>Describe your issue. Our assistant answers from the knowledge base instantly, or routes you to the right team.</p>
+    </div>
+
+    <div class="card">
+      <form id="form">
+        <div class="field">
+          <label for="subject">Subject <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
+          <input id="subject" type="text" maxlength="120" placeholder="e.g. Dashboard won't load" />
+        </div>
+        <div class="field">
+          <label for="message">Your message</label>
+          <textarea id="message" maxlength="2000" required placeholder="Tell us what's going on…"></textarea>
+        </div>
+        <!-- widget Turnstile: inserta un token oculto (cf-turnstile-response) al pasar -->
+        <div class="field cf-turnstile" data-sitekey="0x4AAAAAAECRIY52By-q-Pnp"></div>
+        <button class="submit" id="submit" type="submit">Send message</button>
+        <div class="err" id="err"></div>
+      </form>
+
+      <div class="answer" id="answer" hidden></div>
+    </div>
+
+    <p class="footnote">
+      <a class="backlink" href="index.html">← See the support console (operator view)</a><br />
+      Demo over synthetic data — model-generated answers.
+    </p>
+  </div>
+
+  <script src="cliente.js"></script>
+</body>
+</html>
