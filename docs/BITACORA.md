@@ -31,11 +31,27 @@ Prod `polaris.marinovich.co` = pendiente (custom domain), se hace al final.
    Nota: **URL del Worker NO publicada aún** (decisión A) — esperar hardening + `polaris.marinovich.co`
    para no exponer Vertex a tráfico anónimo ($5 de crédito). (Arreglo previo: ffmpeg roto por x265 desajustado
    → `brew reinstall ffmpeg`.)
-2. **Chat multi-turno** (`/cliente`) — que el cliente responda "gracias/aún nada" y siga el hilo.
-   Requiere estado de conversación + turnos. NO empezado.
+2. ✅ **Chat multi-turno** (`/cliente`) — HECHO y VERIFICADO EN PROD (31-jul, commits Worker+cliente,
+   push `fb18e01`). Máquina de estados de soporte que definió Vlad: turno 1 = triage+RAG; follow-ups
+   leen el hilo y deciden **resolver (gracias→cierra) / pedir error / re-guiar / escalar (a humano)**.
+   Regla clave: "gracias" SIEMPRE gana; escalar es por FALLO REPETIDO tras re-guiar, no por contador.
+   Worker: `SYSTEM_FOLLOWUP` + `geminiStream(contents, system)`; follow-up sin captcha ni retrieval
+   (historial en memoria del browser, modelo A). Cliente: composer + `appendTurn` + `finalizeFollowup`.
+   Verificado: mock (4 ramas) + curl real contra Gemini → `{intent:no_error, action:reguide}` correcto.
+   **Costuras sembradas para el futuro** (definidas por Vlad, NO construidas — foco):
+   - **KB de errores** (troubleshooting): en el nodo "sale error", antes de escalar hacer RAG sobre una
+     KB de diagnóstico (ej. "no aceptaste permisos del Auth → volvé a Connectors > Allow"); si no hay fix,
+     ahí sí escala. Sube el deflection rate → alimenta el motor de señales. Es otro dataset sintético.
+   - **Auto-cierre por inactividad** (ej. 30 min sin respuesta → cierra): mucha gente abandona sin decir
+     "gracias". OJO: es feature de la FASE DE PERSISTENCIA, no de ahora — en modelo A (memoria del browser)
+     el hilo ya muere al cerrar la pestaña, así que un timeout no aporta nada observable. Cuando se persista
+     (punto 3): sweeper/cron que cierra tickets sin reply en N min (status `resolved_inactivity`) → métrica
+     auto-resuelto vs resuelto-explícito.
 3. **Persistencia Worker→Mongo** — guardar cada ticket+respuesta live en `polaris.tickets`
    (cierra el loop → aparece en el foro). Ojo: Worker no usa pymongo; vía Atlas Data API (verificar
-   si sigue viva) o driver TCP. Decisión pendiente.
+   si sigue viva) o driver TCP. Decisión pendiente. **Llave del hilo (analizado con Vlad):** device-id
+   anónimo en `localStorage` (persistencia real sin login; account-id = si fuera producto real; session-id
+   = efímero por pestaña). + acá encaja el auto-cierre por inactividad (sweeper).
 4. **Motor de señales (Fase 3)** `src/signals.py` — expansión (matriz conectores→upsell→sales_success,
    3.259 tickets gated) + deflección (59% kb_autoresolve + gaps de KB). Detalle abajo. NO empezado.
 5. **Hardening** diferido: rate-limit por IP (regla WAF/KV) + tope diario + fallback canned.
