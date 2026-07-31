@@ -9,26 +9,21 @@
 //   7) devuelve { answer, triage, kind }
 // Cualquier otra ruta -> assets estáticos (el foro y /cliente).
 //
-// Enterprise all-GCP: embeddings Y Claude en Vertex, un solo principal (la SA).
-// Claude corre en el Model Garden de Vertex (rawPredict). El costo no es el driver:
-// el objetivo es el patrón enterprise de un solo cloud, una sola identidad.
+// Enterprise all-GCP: embeddings Y LLM en Vertex, un solo principal (la SA).
+// El LLM es Gemini (modelo propio de Google, sin habilitar Model Garden). El costo no
+// es el driver: el objetivo es el patrón enterprise de un solo cloud, una sola identidad.
 //
 // Secrets (wrangler / dashboard, NUNCA en Git):
-//   GCP_SA_KEY        = JSON completo de la service account (embeddings + Claude)
+//   GCP_SA_KEY        = JSON completo de la service account (embeddings + Gemini)
 //   TURNSTILE_SECRET  = secret key del widget Turnstile
-//
-// ⚠️ CONFIRMAR al habilitar Claude en el Model Garden de Vertex:
-//   - CLAUDE_MODEL: id exacto del modelo Anthropic en Vertex.
-//   - CLAUDE_LOCATION: región donde está habilitado (típico us-east5).
 
 import kbChunks from "./kb_vectors.json";
 
 const PROJECT = "polaris-triage-demo";
-const EMBED_LOCATION = "us-central1";           // embeddings (región verificada)
-const CLAUDE_LOCATION = "us-east5";             // Claude en Vertex (CONFIRMAR)
+const LOCATION = "us-central1";                  // embeddings + Gemini (verificado)
 const EMBED_MODEL = "text-embedding-005";
-const CLAUDE_MODEL = "claude-haiku-4-5@20251001"; // id de Claude en Vertex (CONFIRMAR)
-const MAX_INPUT = 2000;                          // cap de longitud del mensaje
+const GEMINI_MODEL = "gemini-2.5-flash-lite";    // LLM en Vertex (verificado)
+const MAX_INPUT = 2000;                           // cap de longitud del mensaje
 
 // Etiquetas válidas del triage — se las pasamos a Claude para que no invente valores.
 const LABELS = {
@@ -118,7 +113,7 @@ async function getAccessToken(env) {
 
 // ---------- llamadas a Vertex ----------
 async function embed(text, token) {
-  const url = `https://${EMBED_LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${EMBED_LOCATION}/publishers/google/models/${EMBED_MODEL}:predict`;
+  const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${LOCATION}/publishers/google/models/${EMBED_MODEL}:predict`;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -129,23 +124,22 @@ async function embed(text, token) {
   return data.predictions[0].embeddings.values;
 }
 
-async function askClaude(context, message, token) {
-  const url = `https://${CLAUDE_LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${CLAUDE_LOCATION}/publishers/anthropic/models/${CLAUDE_MODEL}:rawPredict`;
+async function askGemini(context, message, token) {
+  const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
   const user = `Knowledge-base excerpts:\n${context}\n\nCustomer message: ${message}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      anthropic_version: "vertex-2023-10-16",
-      max_tokens: 700,
-      system: SYSTEM,
-      messages: [{ role: "user", content: user }],
+      systemInstruction: { parts: [{ text: SYSTEM }] },
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      // responseMimeType fuerza JSON válido -> no hay que parsear prosa
+      generationConfig: { maxOutputTokens: 700, responseMimeType: "application/json", temperature: 0.3 },
     }),
   });
   const data = await res.json();
-  const text = (data.content || []).map((b) => b.text || "").join("");
-  if (!text) throw new Error("claude failed: " + JSON.stringify(data));
-  // Claude devuelve JSON; lo extraemos por si viene envuelto en ```json ... ```
+  const text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  if (!text) throw new Error("gemini failed: " + JSON.stringify(data).slice(0, 200));
   const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
   return JSON.parse(json);
 }
@@ -182,12 +176,12 @@ async function handleTriage(request, env) {
   if (!ok) return json({ error: "captcha failed" }, 403);
 
   try {
-    // 2) auth GCP -> 3) embed en Vertex -> 4) cosine -> 5) Claude (Anthropic API)
+    // 2) auth GCP -> 3) embed en Vertex -> 4) cosine -> 5) Gemini en Vertex
     const token = await getAccessToken(env);
     const qvec = await embed(message, token);
     const hits = topK(qvec, 3);
     const context = hits.map((h) => `[${h.id}] ${h.text}`).join("\n\n");
-    const out = await askClaude(context, message, token);
+    const out = await askGemini(context, message, token);
 
     const routing = out?.triage?.routing;
     const kind = routing === "kb_autoresolve" ? "rag" : "escalated";
