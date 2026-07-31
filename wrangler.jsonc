@@ -8,5 +8,14 @@
   "assets": {
     "directory": "./web",
     "binding": "ASSETS"
-  }
+  },
+  // Base D1 (SQLite en el borde) para los tickets en vivo capturados por /cliente.
+  // El binding se expone como env.DB en el Worker. Migraciones en ./migrations.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "polaris-tickets",
+      "database_id": "17fad13e-ffca-4260-bb01-6a8aed34b8f3"
+    }
+  ]
 }
