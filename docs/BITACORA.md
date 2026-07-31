@@ -64,12 +64,13 @@ Formulario público donde el cliente escribe un ticket y recibe respuesta al ins
 **Decisiones firmadas:**
 - Auth GCP: **1 service account + JWT firmado en el Worker (WebCrypto RS256)**. Vertex
   para embeddings (`text-embedding-005`, SIN re-indexar — reusa los 89 vectores) y para
-  **Claude en Vertex Model Garden**. Aclaración clave: el JWT es auth Worker↔Google, NO
-  frena spam.
+  el **LLM en Vertex**. Aclaración clave: el JWT es auth Worker↔Google, NO frena spam.
 - Anti-abuso (esa es la defensa real de créditos): **Turnstile** (captcha CF) + rate-limit
   por IP + cap de longitud de input. **Turnstile va desde el inicio** (decisión de Vlad).
 - Vista cliente = **página aparte** (`/cliente`), no toggle en el foro.
-- Triage en vivo lo devuelve **Claude** junto con la respuesta (sklearn no corre en Worker).
+- Triage en vivo lo devuelve **Gemini 2.5 Flash-Lite (Vertex)** — modelo propio de Google,
+  SIN habilitar Model Garden. (Claude daba 404 por no estar habilitado; Gemini es first-party
+  y evita esa fricción — decisión de Vlad: 100% GCP, no dispersar.) sklearn no corre en Worker.
 - 89 vectores: **bundled** en el Worker (import del JSON).
 
 **Arquitectura (ver diagrama):** Cliente → `POST /api/triage` al Worker → 1) verifica
@@ -90,6 +91,46 @@ binding ASSETS; el worker maneja `/api/*` y delega el resto a los assets estáti
 **Orden de build:** (1) export vectores → (2) vista cliente con mock de respuesta (verifico
 UI sin secretos) → (3) worker real → (4) Vlad setea secrets → (5) test vivo en dev → (6)
 Turnstile enforced. Todo en DEV (`workers.dev`); prod (`polaris.marinovich.co`) al final.
+
+## ✅ Estado al cierre (30-jul) — vista en vivo
+- [x] `worker/index.js` completo: Turnstile → JWT SA (WebCrypto) → embed Vertex (us-central1)
+  → cosine 89 vectores → **Gemini 2.5 Flash-Lite** (JSON forzado: answer + triage) → responde.
+- [x] `web/cliente.html` + `cliente.js` (form + Turnstile `0x4AAAAAAECRIY52By-q-Pnp` + render
+  markdown). Verificado en mock (`/cliente.html?mock=1`).
+- [x] `wrangler.jsonc` con `main` + binding ASSETS. Pusheado y desplegando.
+- [x] Secrets seteados en el Worker: `GCP_SA_KEY` (JSON completo) + `TURNSTILE_SECRET`.
+- [x] Org policy `iam.disableServiceAccountKeyCreation` desactivada SOLO en el proyecto
+  (Vlad, superadmin). SA `polaris-worker@polaris-triage-demo` con rol Usuario de Vertex AI.
+- [x] Endpoints Vertex verificados por ADC: embeddings + Gemini responden 200, JSON OK.
+- [ ] ⚠️ **PENDIENTE MAÑANA: probar `/cliente` EN VIVO** (sin `?mock`) contra el Worker
+  desplegado. Si falla, ver logs del Worker (Observability). Ese es el gate de la "joya".
+- [ ] Hardening diferido: rate-limit por IP (regla WAF o KV) + tope diario + fallback canned.
+- [ ] Custom domain `polaris.marinovich.co` (prod) cuando la vista en vivo esté verde.
+
+## 🎯 Fase 3 — Capa de inteligencia (señales + routing) — PLANEADA
+Norte: convertir Polaris de "demo de RAG" a "producto con impacto de negocio". Detecta y
+**rutea señales** (no automatiza conversión). Un motor offline `src/signals.py` sobre el
+corpus → vista "Signals" en el foro. Dos lentes:
+
+**1) Expansión / LTV (ganar más)** — pedidos de conector cruzados con una **matriz de
+derechos** → señal de upsell/add-on → routing a sales_success con tag `expansion_opportunity`.
+- Matriz FIRMADA por Vlad: **tier-gated** (subir de plan) = Salesforce, Zoho → **Enterprise**;
+  **add-ons pagos** = TikTok, Constant Contact, Klaviyo; **base** = GA4, Google Ads, HubSpot,
+  Mailchimp, Brevo.
+- Heat = niveles de gap de plan (starter pidiendo SF = 2 niveles = caliente).
+- Dato real: 3 planes (starter 12k / growth 8.4k / enterprise 3.6k); **3.259 tickets** piden
+  conector gated (1.602 starter, 1.137 growth, 520 enterprise).
+
+**2) Deflección / eficiencia (gastar menos)** — reducir agentes humanos con la KB.
+- Tasa base: **59% ya es kb_autoresolve** (sin humano).
+- **Gaps de KB**: agarrar escalados / retrieval score bajo → agrupar por tema → clusters con
+  volumen alto + sin cobertura KB = "guía nueva sobre X deflecta ~N tickets". Ranked por ahorro.
+  Emergente (usa embeddings + scores que ya existen), NO baked-in.
+
+**Sequence:** expansión primero (matriz lista) → deflección después.
+**Aún NO empezado** — arranca mañana tras probar la vista en vivo.
+
+## 📌 Nota: doc de aprendizaje va FUERA del repo (decisión de Vlad).
 
 ## ⏭️ Pendiente (otros)
 - [ ] **Consola de gestión**: estado open/closed (derivar: auto-resuelto→cerrado,
