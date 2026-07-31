@@ -46,6 +46,7 @@ function mockResponse(message) {
       "If it still doesn't work after reconnecting, reach out at [support@polaris.app](mailto:support@polaris.app).",
     triage: { topic: "connectors", type: "how_to", priority: "medium", routing: "kb_autoresolve", sentiment: "neutral" },
     kind: "rag",
+    sources: ["Reconnecting an expired connector", "How to connect Google Analytics 4"],
   };
 }
 
@@ -76,7 +77,7 @@ async function submit(ev) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       data = await res.json();
     }
-    renderAnswer(data);
+    renderAnswer(data, { subject, message });
   } catch (e) {
     $("#err").textContent = "Sorry, something went wrong. Please try again.";
     if (window.turnstile) turnstile.reset();
@@ -85,21 +86,60 @@ async function submit(ev) {
   }
 }
 
-// --- render de la respuesta ---
-function renderAnswer(data) {
+// --- render de la respuesta como HILO (post original + respuesta verificada) ---
+function renderAnswer(data, asked) {
   const isRag = data.kind === "rag";
   const t = data.triage || {};
+  const team = pretty(t.routing || "the right team");
+  // para "pedir humano": kb_autoresolve NO es un equipo -> cae a soporte general
+  const humanTeam = t.routing && t.routing !== "kb_autoresolve" ? pretty(t.routing) : "support";
   const labels = [["topic", t.topic], ["type", t.type], ["priority", t.priority], ["routing", t.routing]]
     .filter(([, v]) => v);
+  const sources = (data.sources || []);
+  const title = (asked.subject && asked.subject.trim()) || asked.message.slice(0, 60);
+
   $("#answer").hidden = false;
   $("#answer").innerHTML = `
-    <div class="answer-head">
-      <span class="answer-kind">${isRag ? "◆ Answered from our knowledge base" : "↗ Routed to a specialist"}</span>
-    </div>
-    <div class="response"><div class="response-body">${mdToHtml(data.answer || "")}</div></div>
-    <div class="triage-line">Categorized as:
-      ${labels.map(([k, v]) => `<strong>${esc(pretty(v))}</strong> <span style="opacity:.6">(${esc(k)})</span>`).join(" · ")}
+    <div class="thread">
+      <div class="post op">
+        <div class="post-head"><span class="who">You</span><span class="dot">·</span><span class="when">just now</span></div>
+        <div class="post-title">${esc(title)}</div>
+        <div class="post-body">${esc(asked.message)}</div>
+      </div>
+
+      <div class="post reply">
+        <div class="post-head">
+          <span class="verified">${isRag ? "✓ Answered by Polaris AI" : "↗ Routed to " + esc(team)}</span>
+        </div>
+        <div class="response-body">${mdToHtml(data.answer || "")}</div>
+        ${sources.length ? `<div class="sources"><span class="src-lbl">Sources</span>${
+          sources.map((s) => `<span class="src-badge">${esc(s)}</span>`).join("")}</div>` : ""}
+
+        <div class="helpful" id="helpful">
+          <span class="hlp-q">Was this helpful?</span>
+          <button class="hlp-btn" data-v="yes">Yes</button>
+          <button class="hlp-btn" data-v="no">No</button>
+          <button class="hlp-btn human" data-v="human">Request a human agent</button>
+        </div>
+
+        <details class="triage-fold">
+          <summary>How Polaris classified this</summary>
+          <div class="labels">${labels.map(([k, v]) =>
+            `<span class="chip"><b>${esc(k)}</b> ${esc(pretty(v))}</span>`).join("")}</div>
+        </details>
+      </div>
     </div>`;
+
+  // feedback de utilidad — señal (Sí/No) y ruta a humano (escalación real)
+  $("#helpful").querySelectorAll(".hlp-btn").forEach((b) =>
+    b.addEventListener("click", () => {
+      const v = b.dataset.v;
+      const msg = v === "human"
+        ? `Got it — we've routed this to our ${humanTeam} team. A specialist will follow up.`
+        : v === "yes" ? "Thanks — glad that helped! 🎉" : "Thanks for the feedback — we'll use it to improve our guides.";
+      $("#helpful").innerHTML = `<span class="hlp-done">${esc(msg)}</span>`;
+    }));
+
   $("#answer").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 

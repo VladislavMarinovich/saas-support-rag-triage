@@ -27,11 +27,42 @@
       border: none; border-radius: 10px; padding: .7rem; cursor: pointer; margin-top: .2rem; }
     .submit:disabled { opacity: .55; cursor: default; }
     .err { color: #c02626; font-size: .85rem; margin-top: .6rem; min-height: 1rem; }
-    .answer { margin-top: 1.2rem; }
-    .answer-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .7rem; }
-    .answer-kind { font-size: .75rem; font-weight: 700; color: var(--accent); }
-    .triage-line { font-size: .75rem; color: var(--text-dim); margin-top: .9rem;
-      padding-top: .8rem; border-top: 1px solid var(--border); }
+    /* ---- vista hilo (post original + respuesta verificada) ---- */
+    .answer { margin-top: 1.4rem; }
+    .thread { display: flex; flex-direction: column; gap: .8rem; }
+    .post { border: 1px solid var(--border); border-radius: 12px; padding: .9rem 1rem; }
+    .post.op { background: var(--surface-2); }
+    .post.reply { background: var(--bg); border-color: color-mix(in srgb, var(--accent) 32%, var(--border)); }
+    .post-head { display: flex; align-items: center; gap: .4rem; font-size: .72rem; color: var(--text-dim); margin-bottom: .4rem; }
+    .post-head .who { font-weight: 700; color: var(--text); }
+    .post-title { font-weight: 650; font-size: .95rem; margin-bottom: .2rem; }
+    .post-body { font-size: .88rem; color: var(--text); white-space: pre-wrap; }
+    .verified { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; font-weight: 700; color: var(--accent); }
+    /* fuentes reales de la KB */
+    .sources { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .9rem; }
+    .src-lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 700; }
+    .src-badge { font-size: .74rem; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 999px; padding: .2rem .6rem; color: var(--text); }
+    .src-badge::before { content: "📄 "; }
+    /* utilidad / escalación */
+    .helpful { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem;
+      padding-top: .85rem; border-top: 1px solid var(--border); }
+    .hlp-q { font-size: .8rem; color: var(--text-dim); margin-right: .2rem; }
+    .hlp-btn { font: inherit; font-size: .78rem; cursor: pointer; background: var(--surface);
+      color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .3rem .7rem; }
+    .hlp-btn:hover { border-color: var(--accent); }
+    .hlp-btn.human { margin-left: auto; color: var(--accent); }
+    .hlp-done { font-size: .82rem; color: var(--text); }
+    /* triage colapsable (sutil, no protagonista) */
+    .triage-fold { margin-top: .9rem; }
+    .triage-fold summary { font-size: .74rem; color: var(--text-dim); cursor: pointer; list-style: none; }
+    .triage-fold summary::-webkit-details-marker { display: none; }
+    .triage-fold summary::before { content: "▸ "; }
+    .triage-fold[open] summary::before { content: "▾ "; }
+    .triage-fold .labels { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+    .triage-fold .chip { font-size: .72rem; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: .2rem .55rem; }
+    .triage-fold .chip b { color: var(--text-dim); font-weight: 600; text-transform: capitalize; }
     .footnote { text-align: center; color: var(--text-dim); font-size: .78rem; padding: 1.5rem; }
     .backlink { color: var(--accent); text-decoration: none; font-size: .82rem; }
   </style>
