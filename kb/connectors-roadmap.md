@@ -1,29 +1,35 @@
-# Requesting a new connector (Salesforce, Zoho, and others)
+# Which connectors are available, and on which plan
 
-Polaris connects to your marketing and analytics sources so you can blend them in one place. We know many teams also want to bring in data from other CRMs, ad platforms, and email tools, and new connectors are one of our most requested improvements.
+Polaris connects to your marketing, analytics, and CRM sources so you can blend them in one place. Here's what's available today and how connectors map to your plan.
 
-## Is there a connector for my source yet?
+## Included on every plan
 
-Native connectors available today include **Google Analytics 4 (GA4)**, **Google Ads**, **HubSpot**, **Mailchimp**, and **Brevo**. Direct connectors for some other sources — such as **Salesforce**, **Zoho CRM**, **TikTok Ads**, **Constant Contact**, and **Klaviyo** — are **not available yet**.
+These connectors are available on **all plans** (Starter, Growth, and Enterprise) at no extra cost:
 
-## When will my connector be released?
+- **Google Analytics 4 (GA4)**
+- **Google Ads**
+- **HubSpot**
+- **Mailchimp**
+- **Brevo**
 
-We don't have a committed release date to share right now, but our development team is actively working to make more connectors available as soon as possible. New connectors are prioritized in part by how many customers request them, so telling us which one you need genuinely helps.
+## Enterprise-plan connectors
 
-## How to request one
+**Salesforce** and **Zoho CRM** are available on the **Enterprise** plan. If you're on Starter or Growth and need one of these, upgrading to Enterprise unlocks them — reach out to our team about upgrading.
 
-1. **Open Connectors**  
-   Go to **Settings > Connectors**.
+## Paid add-on connectors
 
-2. **Request a source**  
-   Click **Request a connector** and pick (or type) the source you need — for example Salesforce or Zoho CRM.
+**TikTok Ads**, **Constant Contact**, and **Klaviyo** are available as **paid add-ons** on any plan. You can attach an add-on connector to your workspace for an additional monthly charge.
 
-3. **Submit**  
-   Your request is logged to our product backlog and counts toward prioritization. We'll notify your workspace when the connector becomes available.
+## How to add a connector you're entitled to
 
-## What you can do in the meantime
+1. Go to **Settings > Connectors**.
+2. Click **+ Add Connector** and select your source.
+3. Follow the authorization steps (see the per-connector setup guides).
 
-- **Use an existing connector** — if your data already flows through GA4 or HubSpot, connect that source today (see the connector setup guides).
-- **Import a CSV** — export the data you need from your CRM and upload it so you can start blending it into your dashboards while you wait for a native connector.
+**Note:** Only an Admin can add or change connectors. If a connector isn't included in your current plan, you'll see an upgrade or add-on option instead of the connect button.
+
+## Not sure which plan you're on?
+
+Check **Settings > Billing** to see your plan and any active add-ons, or contact our team and we'll help you find the connector and plan that fit.
 
 Still stuck? [Contact support](mailto:support@polaris.app).

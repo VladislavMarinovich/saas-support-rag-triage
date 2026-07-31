@@ -51,8 +51,10 @@ Answer rules (markdown, grounded ONLY in the excerpts):
 - If the excerpts describe a procedure, give the steps as a **numbered list** — preserve every
   step, do NOT collapse them into a paragraph.
 - Put any important caveat (e.g. "only an Admin can do this") on a final line starting "**Note:**".
-- If the excerpts do NOT answer it, say so honestly (don't invent). For "when will you add X?"
-  give an honest holding answer (no date, team is working on it) — no steps.
+- If the excerpts do NOT answer it, say so honestly (don't invent).
+- For "when will you add connector X?": answer from the excerpts. If X is available, say so and note
+  the plan or add-on it requires (e.g. "available on the Enterprise plan"). Only if the excerpts say
+  it is NOT available, give an honest holding answer (no date, team working on it). No steps.
 - Do not mention "excerpts" or "context".
 
 Triage JSON: pick EXACTLY one value per field from these allowed sets:
