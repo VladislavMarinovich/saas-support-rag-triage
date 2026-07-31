@@ -1,7 +1,46 @@
 # Bitácora — Polaris demo (estado vivo)
 
 > Log de estado + plan para reorientarse rápido (incl. después de un compact).
-> Se actualiza a medida que avanzamos. Fecha última: 2026-07-30 (mid-refactor Mongo).
+> Se actualiza a medida que avanzamos. Fecha última: 2026-07-31.
+
+## 🔴 ESTADO ACTUAL (31-jul) — LEE ESTO PRIMERO
+
+**La "joya" (vista cliente en vivo) FUNCIONA en producción** — verificado end-to-end en
+`saas-support-rag-triage.vladislav-335.workers.dev/cliente`:
+- Flujo: Turnstile → Worker (JWT SA WebCrypto) → embed Vertex (`text-embedding-005`, us-central1)
+  → cosine 89 vectores bundled → **Gemini 2.5 Flash-Lite** en Vertex → respuesta.
+- **Streaming SSE real**: Worker `streamGenerateContent`, parte answer/triage en `---TRIAGE---`,
+  emite eventos `token`+`result`. Cliente **tipea en vivo** con reveal pausado por tiempo (~190 cps)
+  + cursor. Secrets seteados en el Worker: `GCP_SA_KEY` + `TURNSTILE_SECRET`. Site key Turnstile
+  público en el HTML: `0x4AAAAAAECRIY52By-q-Pnp`.
+- **Vista hilo**: post original → "✓ Answered by Polaris AI" → **fuentes reales de KB** (títulos
+  de artículos recuperados) → "¿Útil? Sí/No/Solicitar humano" → triage colapsable.
+- Respuestas en **pasos numerados** + **Nota** de caveats + tono cálido.
+- **KB freshness (fix Salesforce)**: `kb/connectors-roadmap.md` actualizado a 2026 (conectores
+  DISPONIBLES con plan gating: SF/Zoho→Enterprise, TikTok/CC/Klaviyo→add-on). Re-embed (90 chunks
+  en Mongo) + re-export `worker/kb_vectors.json`. Verificado en vivo: "¿cuándo Salesforce?" →
+  "disponible en Enterprise" (no más "sin fecha") Y se rutea a `sales_success` (señal de expansión
+  emergiendo sola). Prompt del Worker: en "¿cuándo agregan X?" responde disponibilidad, no holding.
+
+**Deploy**: Cloudflare Workers (Git-connected, auto-deploy en push a `main`). Un solo repo (mono).
+Prod `polaris.marinovich.co` = pendiente (custom domain), se hace al final.
+
+### ⏭️ PRÓXIMA SESIÓN (en orden)
+1. **GIF del demo** → Vlad graba con `Cmd+Shift+5` (nativo Mac) el flujo de GA4 (respuesta larga
+   = tipeo lucido) → pasa la ruta del `.mov` → yo convierto a GIF optimizado (ffmpeg, método paleta)
+   → `docs/assets/demo.gif` → hero del README + link vivo.
+2. **Chat multi-turno** (`/cliente`) — que el cliente responda "gracias/aún nada" y siga el hilo.
+   Requiere estado de conversación + turnos. NO empezado.
+3. **Persistencia Worker→Mongo** — guardar cada ticket+respuesta live en `polaris.tickets`
+   (cierra el loop → aparece en el foro). Ojo: Worker no usa pymongo; vía Atlas Data API (verificar
+   si sigue viva) o driver TCP. Decisión pendiente.
+4. **Motor de señales (Fase 3)** `src/signals.py` — expansión (matriz conectores→upsell→sales_success,
+   3.259 tickets gated) + deflección (59% kb_autoresolve + gaps de KB). Detalle abajo. NO empezado.
+5. **Hardening** diferido: rate-limit por IP (regla WAF/KV) + tope diario + fallback canned.
+
+*(Fuera de Polaris pero activo: correo a Diana Peña ENVIADO hoy — follow-up de la propuesta $12.5M;
+plan de salida CRMD + Pack de Transición en la memoria `vlad_career_strategy`. Inglés: ruta Platzi,
+Watson ofreció mock-interviews técnicas en inglés sobre Polaris.)*
 
 ## Norte
 Portfolio flagship de empleabilidad (AI Engineer). Sistema: **support triage + RAG**
