@@ -64,21 +64,39 @@ async function submit(ev) {
 
   const btn = $("#submit");
   btn.disabled = true; btn.textContent = "Sending…";
+
+  // arma el hilo YA (el post del cliente) y streamea la respuesta dentro
+  const refs = buildSkeleton({ subject, message });
+  let answerText = "";
+  const onToken = (t) => {
+    answerText += t;
+    refs.body.innerHTML = mdToHtml(answerText) + '<span class="cursor"></span>';
+    refs.body.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
   try {
-    let data;
     if (MOCK) {
-      await new Promise((r) => setTimeout(r, 500)); // simula latencia
-      data = mockResponse(message);
+      const m = mockResponse(message);
+      for (const piece of (m.answer.match(/\S+\s*/g) || [])) { onToken(piece); await sleep(35); }
+      finalizeReply(refs, m, answerText);
     } else {
       const res = await fetch("/api/triage", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, message, turnstileToken: token }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      data = await res.json();
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      // consume el stream SSE: `token` (texto en vivo) + `result` (triage/fuentes al final)
+      let result = null, streamErr = null;
+      await readSSE(res, (event, data) => {
+        if (event === "token") onToken(data.t || "");
+        else if (event === "result") result = data;
+        else if (event === "error") streamErr = data.detail || "stream error";
+      });
+      if (streamErr) throw new Error(streamErr);
+      finalizeReply(refs, result || {}, answerText);
     }
-    renderAnswer(data, { subject, message });
   } catch (e) {
+    $("#answer").hidden = true;
     $("#err").textContent = "Sorry, something went wrong. Please try again.";
     if (window.turnstile) turnstile.reset();
   } finally {
@@ -86,18 +104,33 @@ async function submit(ev) {
   }
 }
 
-// --- render de la respuesta como HILO (post original + respuesta verificada) ---
-function renderAnswer(data, asked) {
-  const isRag = data.kind === "rag";
-  const t = data.triage || {};
-  const team = pretty(t.routing || "the right team");
-  // para "pedir humano": kb_autoresolve NO es un equipo -> cae a soporte general
-  const humanTeam = t.routing && t.routing !== "kb_autoresolve" ? pretty(t.routing) : "support";
-  const labels = [["topic", t.topic], ["type", t.type], ["priority", t.priority], ["routing", t.routing]]
-    .filter(([, v]) => v);
-  const sources = (data.sources || []);
-  const title = (asked.subject && asked.subject.trim()) || asked.message.slice(0, 60);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Lee un stream Server-Sent-Events y llama onEvent(event, obj) por cada bloque (\n\n).
+async function readSSE(res, onEvent) {
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let sep;
+    while ((sep = buf.indexOf("\n\n")) >= 0) {
+      const raw = buf.slice(0, sep); buf = buf.slice(sep + 2);
+      let event = "message", data = "";
+      for (const line of raw.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+      if (data) { try { onEvent(event, JSON.parse(data)); } catch { /* ignora bloque parcial */ } }
+    }
+  }
+}
+
+// --- hilo: post original + esqueleto de la respuesta (se llena al streamear) ---
+function buildSkeleton(asked) {
+  const title = (asked.subject && asked.subject.trim()) || asked.message.slice(0, 60);
   $("#answer").hidden = false;
   $("#answer").innerHTML = `
     <div class="thread">
@@ -106,31 +139,43 @@ function renderAnswer(data, asked) {
         <div class="post-title">${esc(title)}</div>
         <div class="post-body">${esc(asked.message)}</div>
       </div>
-
       <div class="post reply">
-        <div class="post-head">
-          <span class="verified">${isRag ? "✓ Answered by Polaris AI" : "↗ Routed to " + esc(team)}</span>
-        </div>
-        <div class="response-body">${mdToHtml(data.answer || "")}</div>
-        ${sources.length ? `<div class="sources"><span class="src-lbl">Sources</span>${
-          sources.map((s) => `<span class="src-badge">${esc(s)}</span>`).join("")}</div>` : ""}
-
-        <div class="helpful" id="helpful">
-          <span class="hlp-q">Was this helpful?</span>
-          <button class="hlp-btn" data-v="yes">Yes</button>
-          <button class="hlp-btn" data-v="no">No</button>
-          <button class="hlp-btn human" data-v="human">Request a human agent</button>
-        </div>
-
-        <details class="triage-fold">
-          <summary>How Polaris classified this</summary>
-          <div class="labels">${labels.map(([k, v]) =>
-            `<span class="chip"><b>${esc(k)}</b> ${esc(pretty(v))}</span>`).join("")}</div>
-        </details>
+        <div class="post-head"><span class="verified" id="verified">Polaris AI is typing…</span></div>
+        <div class="response-body" id="ansbody"></div>
+        <div id="replymeta"></div>
       </div>
     </div>`;
+  return { body: $("#ansbody"), meta: $("#replymeta"), verified: $("#verified") };
+}
 
-  // feedback de utilidad — señal (Sí/No) y ruta a humano (escalación real)
+// --- cierra la respuesta: badge final + fuentes + utilidad + triage colapsable ---
+function finalizeReply(refs, data, answerText) {
+  const isRag = data.kind === "rag";
+  const t = data.triage || {};
+  const team = pretty(t.routing || "the right team");
+  // para "pedir humano": kb_autoresolve NO es un equipo -> cae a soporte general
+  const humanTeam = t.routing && t.routing !== "kb_autoresolve" ? pretty(t.routing) : "support";
+  const labels = [["topic", t.topic], ["type", t.type], ["priority", t.priority], ["routing", t.routing]]
+    .filter(([, v]) => v);
+  const sources = data.sources || [];
+
+  refs.body.innerHTML = mdToHtml(answerText);  // quita el cursor, render final
+  refs.verified.textContent = isRag ? "✓ Answered by Polaris AI" : "↗ Routed to " + team;
+
+  refs.meta.innerHTML = `
+    ${sources.length ? `<div class="sources"><span class="src-lbl">Sources</span>${
+      sources.map((s) => `<span class="src-badge">${esc(s)}</span>`).join("")}</div>` : ""}
+    <div class="helpful" id="helpful">
+      <span class="hlp-q">Was this helpful?</span>
+      <button class="hlp-btn" data-v="yes">Yes</button>
+      <button class="hlp-btn" data-v="no">No</button>
+      <button class="hlp-btn human" data-v="human">Request a human agent</button>
+    </div>
+    ${labels.length ? `<details class="triage-fold"><summary>How Polaris classified this</summary>
+      <div class="labels">${labels.map(([k, v]) =>
+        `<span class="chip"><b>${esc(k)}</b> ${esc(pretty(v))}</span>`).join("")}</div>
+    </details>` : ""}`;
+
   $("#helpful").querySelectorAll(".hlp-btn").forEach((b) =>
     b.addEventListener("click", () => {
       const v = b.dataset.v;
@@ -139,8 +184,6 @@ function renderAnswer(data, asked) {
         : v === "yes" ? "Thanks — glad that helped! 🎉" : "Thanks for the feedback — we'll use it to improve our guides.";
       $("#helpful").innerHTML = `<span class="hlp-done">${esc(msg)}</span>`;
     }));
-
-  $("#answer").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 $("#form").addEventListener("submit", submit);

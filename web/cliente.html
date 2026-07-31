@@ -38,6 +38,11 @@
     .post-title { font-weight: 650; font-size: .95rem; margin-bottom: .2rem; }
     .post-body { font-size: .88rem; color: var(--text); white-space: pre-wrap; }
     .verified { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; font-weight: 700; color: var(--accent); }
+    /* cursor de tipeo mientras streamea */
+    .cursor { display: inline-block; width: .5rem; height: 1rem; margin-left: 1px; vertical-align: text-bottom;
+      background: var(--accent); border-radius: 1px; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
     /* fuentes reales de la KB */
     .sources { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .9rem; }
     .src-lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 700; }
