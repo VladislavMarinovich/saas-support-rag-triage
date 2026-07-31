@@ -124,6 +124,8 @@ h1 .dim { color: var(--text-dim); font-weight: 500; }
 .badge.prio-medium { background: #eef0f6; color: #5b6472; }
 .badge.prio-low { background: #eef0f6; color: #7a8394; }
 .badge.event { background: var(--accent-soft); color: var(--accent); }
+/* ticket capturado en vivo por /cliente (persistido en D1) */
+.badge.live { background: #e7f6ec; color: #1a7f46; text-transform: none; letter-spacing: .01em; }
 @media (prefers-color-scheme: dark) {
   .badge.route-kb_autoresolve { background: #123021; color: #56d98c; }
   .badge.route-engineering    { background: #172244; color: #8fa8f5; }
@@ -133,6 +135,7 @@ h1 .dim { color: var(--text-dim); font-weight: 500; }
   .badge.prio-critical { background: #351717; color: #f08080; }
   .badge.prio-high { background: #34260f; color: #e0a35a; }
   .badge.prio-medium, .badge.prio-low { background: #232838; color: #99a2b3; }
+  .badge.live { background: #123021; color: #56d98c; }
 }
 
 /* ---- Detail ---- */

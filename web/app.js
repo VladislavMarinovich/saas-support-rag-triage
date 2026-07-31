@@ -59,9 +59,46 @@ async function load() {
     $("#list").innerHTML = `<li class="ticket">No pude cargar data/tickets.json (${esc(e.message)}).</li>`;
     return;
   }
+  // Tickets EN VIVO capturados por /cliente (persistidos en D1). Se anteponen con badge "Live".
+  // Si el foro se sirve estático (sin Worker) el fetch falla -> solo se ven los sintéticos.
+  try {
+    const r = await fetch("/api/tickets");
+    if (r.ok) {
+      const { tickets } = await r.json();
+      const live = (tickets || []).map(toForoShape).filter(Boolean);
+      state.all = [...live, ...state.all];
+    }
+  } catch { /* modo estático: sin tickets en vivo */ }
   buildFilters();
   renderStats();
   apply();
+}
+
+// Mapea un ticket de D1 {ticket_id, created, subject, thread(JSON), triage(JSON), status}
+// a la MISMA forma que renderiza el foro (la de tickets.json).
+function toForoShape(t) {
+  let thread = [], triage = {};
+  try { thread = JSON.parse(t.thread) || []; } catch { /* thread inválido */ }
+  try { triage = JSON.parse(t.triage) || {}; } catch { /* triage vacío */ }
+  const firstUser = thread.find((x) => x.role === "user");
+  const firstBot = thread.find((x) => x.role === "assistant");
+  const routing = triage.routing || (t.status === "escalated" ? "escalated" : "kb_autoresolve");
+  return {
+    ticket_id: t.ticket_id,
+    created_at: new Date(t.created).toISOString(),
+    channel: "web", plan: "", user_role: "",
+    reported_category: "",
+    topic: triage.topic || "", type: triage.type || "",
+    priority: triage.priority || "", routing,
+    sentiment: triage.sentiment || "",
+    event_id: null, event_type: null,
+    subject: t.subject || "",
+    body: firstUser ? firstUser.text : "",
+    response: firstBot ? firstBot.text : "",
+    response_kind: routing === "kb_autoresolve" ? "rag" : "escalated",
+    live: true,
+    status: t.status,
+  };
 }
 
 // ---- filtros (opciones únicas desde los datos) ----
@@ -137,6 +174,7 @@ function renderList() {
   list.innerHTML = pageItems.map((t, i) => `
     <li class="ticket ${state.selected === t.ticket_id ? "active" : ""}" data-i="${start + i}">
       <div class="row1">
+        ${t.live ? `<span class="badge live">● Live</span>` : ""}
         <span class="badge route-${esc(t.routing)}">${esc(pretty(t.routing))}</span>
         <span class="badge prio-${esc(t.priority)}">${esc(t.priority)}</span>
         ${t.event_id ? `<span class="badge event">${esc(t.event_type)}</span>` : ""}
@@ -173,9 +211,9 @@ function select(t) {
     ["routing", t.routing], ["sentiment", t.sentiment],
   ];
   $("#detail").innerHTML = `
-    <h2>${esc(TITLE(t))}</h2>
-    <div class="meta">${esc(t.ticket_id)} · ${esc(fmtDate(t.created_at))} · ${esc(t.channel)} ·
-      ${esc(pretty(t.plan))} plan · ${esc(pretty(t.user_role))}</div>
+    <h2>${t.live ? `<span class="badge live">● Live</span> ` : ""}${esc(TITLE(t))}</h2>
+    <div class="meta">${esc(t.ticket_id)} · ${esc(fmtDate(t.created_at))} · ${esc(t.channel)}${
+      t.live ? ` · <b>${esc(t.status || "open")}</b>` : ` · ${esc(pretty(t.plan))} plan · ${esc(pretty(t.user_role))}`}</div>
 
     <div class="section-label">Customer message</div>
     <div class="body-text">${esc(t.body)}</div>
