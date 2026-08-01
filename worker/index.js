@@ -24,6 +24,10 @@ const LOCATION = "us-central1";                  // embeddings + Gemini (verific
 const EMBED_MODEL = "text-embedding-005";
 const GEMINI_MODEL = "gemini-2.5-flash-lite";    // LLM en Vertex (verificado)
 const MAX_INPUT = 2000;                           // cap de longitud del mensaje
+// Kill-switch del endpoint en vivo: en false, /api/triage responde "pausado" (503) sin
+// llamar a Vertex — el sitio estático (foro, /cliente, GIF) sigue arriba, gasto = $0.
+// Poner en true (+ push) para reactivar la demo (hacerlo tras el hardening / al buscar empleo).
+const LIVE = false;
 
 // Etiquetas válidas del triage — se las pasamos al LLM para que no invente valores.
 const LABELS = {
@@ -245,6 +249,9 @@ async function listTickets(env, limit = 50) {
 async function handleTriage(request, env, ctx) {
   const json = (obj, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+
+  // Kill-switch: demo pausada -> no se llama a Vertex (ver LIVE arriba).
+  if (!LIVE) return json({ error: "demo_paused", detail: "The live demo is paused to conserve credits. See the recorded demo (GIF) and case study." }, 503);
 
   let body;
   try {
