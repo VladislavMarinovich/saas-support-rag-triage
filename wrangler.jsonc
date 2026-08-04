@@ -9,6 +9,12 @@
     "directory": "./web",
     "binding": "ASSETS"
   },
+  // Dominio propio del demo. Cloudflare crea el registro DNS (proxied) y el
+  // certificado TLS automaticamente al desplegar, porque la zona marinovich.co
+  // ya vive en esta misma cuenta. No afecta el correo del apex (MX de Google).
+  "routes": [
+    { "pattern": "polaris.marinovich.co", "custom_domain": true }
+  ],
   // Base D1 (SQLite en el borde) para los tickets en vivo capturados por /cliente.
   // El binding se expone como env.DB en el Worker. Migraciones en ./migrations.
   "d1_databases": [
