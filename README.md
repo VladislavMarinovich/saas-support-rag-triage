@@ -63,6 +63,17 @@ No real users, no PII.
   responses where they suffice (escalation acks). Full spend tracked in
   [`docs/costs.md`](docs/costs.md) (~$3 of a $100 budget).
 
+
+## 💸 Unit economics
+
+Grounded answers run on Gemini 2.5 Flash-Lite over a cosine retrieval (no dedicated vector DB). At a typical answer size:
+
+- **~US$0.0002 per grounded answer** (retrieved context in + ~200 tokens out)
+- **≈ 5,500 answers per US$1**
+- The whole project — dataset generation + embeddings + inference — ran on GCP for **~US$1.75**, fully covered by free-tier credits.
+
+Cost stays low **by design**: only `kb_autoresolve` tickets hit the LLM; the rest get templated acknowledgments at **$0**.
+
 ## Notebooks
 
 - **EDA** — the dataset's temporal signature, distributions and cross-tabs:
