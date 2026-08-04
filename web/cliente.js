@@ -111,7 +111,16 @@ async function runStream(refs, payload) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // El backend puede estar pausado a propósito (kill-switch LIVE=false -> 503
+        // demo_paused). Lo marcamos para mostrar un mensaje intencional, no un error.
+        let code = null;
+        try { code = (await res.json()).error; } catch { /* sin cuerpo JSON */ }
+        const err = new Error(code || `HTTP ${res.status}`);
+        if (res.status === 503 || code === "demo_paused") err.code = "demo_paused";
+        throw err;
+      }
+      if (!res.body) throw new Error("no stream body");
       let streamErr = null;
       await readSSE(res, (event, data) => {
         if (event === "token") full += (data.t || "");
@@ -308,8 +317,14 @@ async function onSubmit(ev) {
     }
     history.push({ role: "user", text }, { role: "assistant", text: full });
   } catch (e) {
-    refs.body.innerHTML = '<p class="err-inline">Sorry, something went wrong. Please try again.</p>';
-    refs.verified.textContent = "⚠ Error";
+    if (e && e.code === "demo_paused") {
+      // Pausa intencional del demo: mensaje profesional, no un error rojo.
+      refs.verified.textContent = "◷ Live demo paused";
+      refs.body.innerHTML = '<p>The live demo is paused to conserve API credits — but you just saw the real interface working. The same backend powers live triage classification, token-by-token streaming and knowledge-base-grounded answers.</p><p>Explore the <a href="index.html">operator console</a> to browse real triaged tickets.</p>';
+    } else {
+      refs.body.innerHTML = '<p class="err-inline">Sorry, something went wrong. Please try again.</p>';
+      refs.verified.textContent = "⚠ Error";
+    }
     if (first && window.turnstile) turnstile.reset();
   } finally {
     if (!threadEnded) { setBusy(false); input.focus(); }
