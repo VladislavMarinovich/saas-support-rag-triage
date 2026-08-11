@@ -27,7 +27,7 @@ const MAX_INPUT = 2000;                           // cap de longitud del mensaje
 // Kill-switch del endpoint en vivo: en false, /api/triage responde "pausado" (503) sin
 // llamar a Vertex — el sitio estático (foro, /cliente, GIF) sigue arriba, gasto = $0.
 // Poner en true (+ push) para reactivar la demo (hacerlo tras el hardening / al buscar empleo).
-const LIVE = false;
+const LIVE = true;
 
 // Etiquetas válidas del triage — se las pasamos al LLM para que no invente valores.
 const LABELS = {
