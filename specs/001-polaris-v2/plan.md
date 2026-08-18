@@ -251,8 +251,62 @@ El código v1 nunca se elimina durante la transición. La ruta v1 sigue viva baj
 
 ## 6. Convenciones del proyecto
 
-_A completar en commit siguiente._
+Este plan establece o ratifica siete convenciones obligatorias que aplican a todo el trabajo de Polaris de aquí en adelante. Están escritas aquí para que cualquier persona que se una al proyecto las encuentre en un solo documento.
+
+**ADRs con Métricas de vigilancia.** Ningún ADR se acepta sin la sección **Métricas de vigilancia** que responda tres preguntas concretas: qué SLI del dashboard mide esta decisión, qué umbral dispara reevaluación, qué acción se activa cuando se cruza. El patrón fue establecido en ADR-0004 y aplicado retroactivamente a ADR-0001, 0002 y 0003. Los ADRs sin métricas de vigilancia son documentos muertos y se rechazan en review.
+
+**Dashboards versionados como código.** Los dashboards de Grafana viven como archivos JSON en `observability/dashboards/*.json`. Los cambios entran por PR contra el repo. El script `observability/scripts/deploy-dashboards.sh` los sincroniza al stack Grafana Cloud vía API. Editar directamente en la UI y no versionar el cambio se considera drift y se resuelve con re-deploy desde el JSON canónico.
+
+**PHVA aplicado a dashboards.** Un cambio de dashboard sigue el mismo ciclo Planear-Hacer-Verificar-Actuar que un cambio de código: issue en Jira, rama con `POL-XX` en el nombre, edición del JSON, PR contra `main`, review, rebase-and-merge, deploy vía script. No hay excepciones "porque es solo el dashboard".
+
+**Conventional Commits con `Refs POL-XX`.** Todos los commits llevan Conventional Commits en el título (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`) y `Refs POL-XX` en el body. La política está en `docs/WORKFLOW.md` y no se negocia. La granularidad es 1 cambio = 1 commit.
+
+**Rebase-and-merge como única estrategia de PR.** Squash contradice la regla operativa de commits granulares del owner. Los commits granulares se preservan en `main` como trazabilidad de primera clase. Es la única forma de que `git log --oneline` de `main` cuente la historia real del proyecto, no una versión comprimida. Documentado en `docs/WORKFLOW.md` sección 5.
+
+**Bilingüe estratificado.** Documentación interna (Spec, Plan, ADRs, WORKFLOW, Constitution, comentarios de código, commits, PRs, Jira, Confluence) en español. Artefactos externos públicos (README del repo, descripción de GitHub, dashboard público de Grafana, landing potencial) en inglés. Es la aplicación literal del Principio XIII de la Constitution.
+
+**Scope freeze v(N+1).** Toda idea nueva que surja durante la ejecución de un scope congelado se etiqueta como v(N+1) y se difiere al backlog. No se agrega al scope activo. Excepción única: cuando la idea representa un blocker técnico real del scope actual (aplicó una vez durante la escritura de este plan y se documentó como aprendizaje). La regla completa está en la Constitution sección Flujo de Trabajo.
+
+Estas siete convenciones convierten el proyecto en un sistema operable por terceros. Son el mecanismo concreto por el cual el sistema sobrevive a su arquitecto.
+
 
 ## 7. Referencias cruzadas
 
-_A completar en commit siguiente._
+**Fuentes de verdad del proyecto Polaris.**
+
+- Constitution — 14 principios innegociables, base filosófica de todo el ciclo: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md)
+- Spec funcional v2 — qué construimos y por qué: [`specs/001-polaris-v2/spec.md`](spec.md)
+- Plan técnico (este documento) — cómo lo construimos: [`specs/001-polaris-v2/plan.md`](plan.md)
+- Discovery observacional — schema empírico del schema BQ: [`specs/001-polaris-v2/discovery/`](discovery/) *(por crearse en Fase 0.b)*
+- Baseline v1 — punto de partida cuantitativo: [`specs/001-polaris-v2/baseline.md`](baseline.md) *(por crearse en Fase 1)*
+
+**ADRs.**
+
+- [ADR-0001](../../docs/adr/0001-cache-backend.md) — Cache backend: Cloudflare KV.
+- [ADR-0002](../../docs/adr/0002-sink-telemetria.md) — Sink de telemetría: BQ streaming con `waitUntil`.
+- [ADR-0003](../../docs/adr/0003-dashboard-tool.md) — Dashboard tool: Grafana Cloud Free Tier + Dashboard as Code.
+- [ADR-0004](../../docs/adr/0004-bm25-tokenizacion.md) — BM25 stemmer-less multilingüe.
+- [ADR-0005](../../docs/adr/0005-fusion-rrf.md) — Fusión de rankings: RRF k=60.
+- [ADR-0006](../../docs/adr/0006-rerank-cross-encoder.md) — Rerank cross-encoder: rechazado para v2.
+
+**Documentación operativa.**
+
+- Flujo de trabajo Git: [`docs/WORKFLOW.md`](../../docs/WORKFLOW.md)
+- Plantilla de Pull Request: [`.github/pull_request_template.md`](../../.github/pull_request_template.md)
+
+**Artefactos visuales.**
+
+- Anatomía de Polaris — 3 diagramas de arquitectura (contexto, ejecución, observabilidad): [claude.ai/code/artifact/c7f8f9c2-19db-4b28-8600-e4b9262f1c09](https://claude.ai/code/artifact/c7f8f9c2-19db-4b28-8600-e4b9262f1c09)
+
+**Confluence espejo (marinovich-consulting, space PO).**
+
+- [Polaris — Home](https://marinovich-consulting.atlassian.net/wiki/spaces/PO/pages/557251/Polaris+Home) (id 557251)
+- [Polaris Constitution](https://marinovich-consulting.atlassian.net/wiki/spaces/PO/pages/557276/Polaris+Constitution) (id 557276)
+- [Polaris — Spec funcional v2](https://marinovich-consulting.atlassian.net/wiki/spaces/PO/pages/557298/Polaris+Spec+funcional+v2) (id 557298)
+- Plan técnico y ADRs — se espejan al cierre de POL-4.
+
+**Jira (project POL en marinovich-consulting).**
+
+- Epic POL-1 — Polaris v2 canonicalize + hybrid + telemetría + multilingual.
+- Historias hijas POL-2 a POL-11 con estado en Jira.
+
