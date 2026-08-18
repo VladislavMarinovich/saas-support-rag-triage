@@ -38,7 +38,21 @@ El diseño de v2 respeta las tres capas: el usuario final ve respuestas útiles 
 
 ## 3. Alcance funcional v2
 
-_A completar en commit siguiente._
+Seis features componen v2, descritas como comportamiento observable — no como implementación, que vive en el Plan técnico (POL-4).
+
+**Canonicalización + cache (POL-6).** Antes de recuperar y generar, el sistema normaliza la query del usuario a una forma canónica idioma-agnóstica y consulta un cache persistente en la capa edge. Si la forma canónica coincide con una consulta reciente, la respuesta se sirve del cache. Si no, se ejecuta la cadena completa y el resultado se persiste. El cache tiene TTL configurable y respeta el idioma del query original al servir. El comportamiento observable es que dos usuarios haciendo preguntas equivalentes en distinto fraseo reciben la misma respuesta, y la segunda es sensiblemente más rápida.
+
+**Retrieval híbrido (POL-7).** El sistema recupera candidatos por dos vías en paralelo: índice denso (embeddings semánticos) e índice léxico (BM25 sobre los mismos chunks). Los dos resultados se fusionan por Reciprocal Rank Fusion. El comportamiento observable es que queries con términos exactos del producto, jerga interna o errores tipográficos leves recuperan chunks correctos que el índice denso solo no encontraba, y viceversa para queries conceptuales.
+
+**Telemetría estructurada + dashboard (POL-8).** Cada request emite un evento con timestamp, costo por componente (embed + generación + canonicalize), latencia por componente, intent detectado, chunks recuperados, cache hit/miss, idioma detectado y idioma de respuesta. Los eventos aterrizan en BigQuery y alimentan un dashboard en Looker Studio con las métricas anteriores agregadas. El comportamiento observable es que cualquier reviewer puede abrir el dashboard y ver el sistema operando en tiempo casi real, incluyendo simulaciones de picos de carga.
+
+**Multilingual explícito (POL-9).** El sistema detecta el idioma del query, recupera contra la KB completa sin importar el idioma de cada chunk, y responde en el idioma original del query. La KB permanece en su idioma técnico nativo (típicamente inglés para productos SaaS); es el LLM el que traduce en generación. El comportamiento observable es que una pregunta en español sobre un artículo en inglés se responde en español, con cita al chunk fuente en inglés.
+
+**Eval framework + baseline (POL-10).** Existe un conjunto de queries etiquetadas con chunks esperados y respuestas esperadas. El framework corre v1 y v2 sobre el mismo conjunto y reporta Recall@K, Precision@K, MRR, latencia p50/p95 y costo promedio. Ningún PR de v2 se mergea sin correr el framework y adjuntar delta contra baseline. El comportamiento observable es que cada release trae una tabla comparativa en las release notes.
+
+**Respuestas en modo cliente.** El prompt de generación instruye al LLM a responder en lenguaje del usuario final: sin jerga interna del producto salvo cuando el término es el nombre exacto de una feature, sin referencias meta al sistema ("según mis fuentes"), y con estructura corta orientada a acción. La KB permanece técnica; la traducción de registro ocurre en el LLM. El comportamiento observable es que las respuestas se pueden pegar directo en un chat de soporte sin edición.
+
+**Expansión de KB (POL-11).** La KB crece a un tamaño que hace la evaluación estadísticamente más significativa y el retrieval más realista. El comportamiento observable es que preguntas antes fuera de cobertura ahora tienen respuesta grounded.
 
 ## 4. Criterios de aceptación
 
