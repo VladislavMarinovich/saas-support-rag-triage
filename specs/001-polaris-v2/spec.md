@@ -40,6 +40,8 @@ El diseño de v2 respeta las tres capas: el usuario final ve respuestas útiles 
 
 Seis features componen v2, descritas como comportamiento observable — no como implementación, que vive en el Plan técnico (POL-4).
 
+**Nota de método sobre telemetría:** el schema de eventos de v2 se diseña bottom-up desde preguntas de negocio concretas (¿dónde está el sobrecosto?, ¿qué componente es el cuello de botella?, ¿el sistema está siendo honesto o alucinando?), traducidas a SLIs verificables. Esas SLIs determinan qué eventos crudos se capturan; no al revés. El detalle empírico del schema sale de una fase de descubrimiento observacional sobre el flow actual, documentada en `specs/001-polaris-v2/discovery/`. Esto es *observability by design*, no logging por precaución.
+
 **Canonicalización + cache (POL-6).** Antes de recuperar y generar, el sistema normaliza la query del usuario a una forma canónica idioma-agnóstica y consulta un cache persistente en la capa edge. Si la forma canónica coincide con una consulta reciente, la respuesta se sirve del cache. Si no, se ejecuta la cadena completa y el resultado se persiste. El cache tiene TTL configurable y respeta el idioma del query original al servir. El comportamiento observable es que dos usuarios haciendo preguntas equivalentes en distinto fraseo reciben la misma respuesta, y la segunda es sensiblemente más rápida.
 
 **Retrieval híbrido (POL-7).** El sistema recupera candidatos por dos vías en paralelo: índice denso (embeddings semánticos) e índice léxico (BM25 sobre los mismos chunks). Los dos resultados se fusionan por Reciprocal Rank Fusion. El comportamiento observable es que queries con términos exactos del producto, jerga interna o errores tipográficos leves recuperan chunks correctos que el índice denso solo no encontraba, y viceversa para queries conceptuales.
@@ -91,6 +93,8 @@ Los siguientes items han sido considerados y quedan deliberadamente fuera de v2.
 **Redacción de PII en KB o queries.** No está en el path de un demo de portafolio; se activa cuando haya cliente real con datos sensibles.
 
 **Rerank cross-encoder** entre retrieval y generación. Sujeto a Principio X (p95 < 2s) — solo entra si el margen de latencia lo permite tras medir baseline.
+
+**Clarificación multi-turn** (el sistema pregunta al usuario para desambiguar antes de responder). Rompe el modelo single-turn de v1/v2 y toca cache, telemetría y estado del cliente. La decisión de meterla depende de datos empíricos: si el baseline y las mejoras de v2 (hybrid + canonicalize) resuelven las queries ambiguas por fraseo, clarificación no aporta. Si el dashboard muestra que una fracción significativa de queries llega con retrieval de baja confianza sin importar cuánto se mejora el retrieval, entonces multi-turn se justifica y entra en v2.1 con criterio, no adivinando.
 
 ## 6. Métricas post-launch
 
