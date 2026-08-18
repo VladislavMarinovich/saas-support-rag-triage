@@ -23,7 +23,22 @@ Estos tres compromisos se materializan a lo largo del plan. Todo lo demás es im
 
 ## 2. Arquitectura general
 
-_A completar en commit siguiente._
+La arquitectura de Polaris v2 se documenta visualmente en el artefacto vivo **[Anatomía de Polaris](https://claude.ai/code/artifact/c7f8f9c2-19db-4b28-8600-e4b9262f1c09)** con tres diagramas complementarios: contexto (bloques y vecinos), ejecución (secuencia de un request completo), y observabilidad (viaje del evento del Worker al panel). Este plan describe en prosa lo que esos diagramas muestran.
+
+El sistema tiene una capa de runtime, una capa de storage caliente, una capa de storage analítico, y una capa de visualización. Cada una vive en el proveedor donde su costo y su latencia son óptimos, y las cuatro se conectan por HTTPS estándar sin infra intermedia.
+
+**Capa de runtime.** El Polaris Worker corre en el edge global de Cloudflare, expuesto en `polaris.marinovich.co`. La misma imagen del Worker atiende cualquier request de cualquier región del mundo, ejecutándose en el datacenter más cercano al usuario. Dentro del Worker viven: el pipeline de canonicalización (llamada corta a Gemini Flash Lite), la lógica de cache lookup contra KV, el módulo BM25 con el índice invertido en memoria, la orquestación de retrieval híbrido con RRF, y el prompt de generación grounded contra chunks recuperados.
+
+**Capa de storage caliente.** Cloudflare Workers KV mantiene el cache de respuestas canonicalizadas, con TTL escalonado por hash entre 24 y 39 horas (ADR-0001). KV vive globalmente distribuido en el edge de Cloudflare, con latencia de lectura ~10 ms desde cualquier Worker.
+
+**Capa de storage analítico.** BigQuery en `us-central1` (Iowa) recibe los eventos vía streaming insert directo desde el Worker, ejecutado en `waitUntil` para no bloquear la respuesta al usuario (ADR-0002). El dataset `polaris_prod_events` vive en la misma región donde vive Vertex AI del proyecto `polaris-triage-demo`, lo que elimina egress inter-region y aprovecha la vecindad para consultas rápidas.
+
+**Capa de visualización.** Grafana Cloud Free Tier hospedado en US East (Ohio), la región Grafana más cercana geográficamente a `us-central1`. Los dashboards son artefactos JSON versionados en `observability/dashboards/*.json` del repo (ADR-0003). Un subconjunto se expone públicamente vía la funcionalidad Public Dashboards, y se mapea a `grafana.marinovich.co` con CNAME para presentación de portafolio.
+
+**Servicios externos.** Vertex AI en `us-central1` provee embeddings (`text-embedding-005`) y generación (`gemini-2.5-flash-lite`). Es el único servicio pagado en la ruta caliente y el que dispara el kill-switch cuando el budget se toca.
+
+**Coherencia del diseño.** Cloudflare para runtime y storage caliente, Google Cloud para inferencia y storage analítico, Grafana Labs para dashboards. Tres proveedores, cada uno para lo que hace mejor. La Constitution (Principio I) no exige un único cloud absoluto; exige coherencia y no fragmentación gratuita. Este diseño la cumple.
+
 
 ## 3. Schema BigQuery draft
 
