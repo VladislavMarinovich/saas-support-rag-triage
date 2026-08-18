@@ -97,8 +97,11 @@ El campo `cost_hint` alimenta el widget de ahorro estimado del dashboard (Spec s
 - Free tier de Workers KV: 100k reads/día, 1k writes/día, 1 GB storage — cubre el demo.
 - Escalado paid: $0.50 por millón reads, $5 por millón writes. Volumen esperado en producción hipotética hace que el gasto en KV sea marginal frente al ahorro en llamadas a Vertex AI.
 
-## Cuándo revisitar este ADR
+## Métricas de vigilancia
 
-- Volumen sostenido supera 50k reads/día por datacenter (patrón L1+L2 empieza a rendir).
-- Se necesita invalidación fina (por ejemplo, por artículo de KB).
-- Aparece un patrón de tráfico que exige strong consistency.
+| SLI (campo del schema BQ + widget dashboard) | Umbral que dispara reevaluación | Acción |
+|---|---|---|
+| **`cache_hit_rate`** — porcentaje de requests que hicieron hit en KV (exact + canonicalized). Widget: gauge. | < 20% durante 30 días con volumen sostenido > 100 req/día. | Reabrir POL-6 (canonicalize). Prompt de canonicalización posiblemente no está normalizando lo suficiente, o la KB cambia demasiado rápido invalidando writes. |
+| **`kv_write_error_rate`** — porcentaje de escrituras a KV que fallan. Widget: time series. | > 1% durante 7 días. | Revisar quotas del free tier (1k writes/día) o migrar a plan pago. Si es error de auth, rotar credenciales. |
+| **`cache_serve_latency_p95`** — latencia p95 servido desde KV en hits. Widget: stat. | > 30 ms sostenido durante 7 días. | Investigar región del KV o considerar activar Layer 1 (Cache API) — reabrir la opción F descartada aquí. |
+| **`kv_reads_per_day`** — volumen de reads/día contra el free tier cap de 100k. Widget: bar chart. | > 80k reads/día durante 3 días. | Alerta preventiva: patrón L1+L2 empieza a rendir. Presupuestar migración o activar L1 Cache API. |
