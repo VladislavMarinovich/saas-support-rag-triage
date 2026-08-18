@@ -26,15 +26,13 @@ v2 aborda estas cuatro carencias como un solo ciclo cerrado — canonicalizació
 
 ## 2. Usuarios y jobs-to-be-done
 
-Polaris sirve simultáneamente a tres audiencias con expectativas distintas. La spec optimiza para las tres sin comprometer a ninguna.
+Polaris sirve a dos audiencias con expectativas distintas. La spec optimiza para ambas sin comprometer a ninguna.
 
 **Usuario final — persona que hace la pregunta.** Puede ser un agente de soporte que necesita responder rápido a un cliente, o el propio cliente resolviéndose solo. Su JTBD es *resolver un problema concreto sin leer documentación completa*. Espera una respuesta corta, en su idioma, con lenguaje del usuario y no jerga de producto, y que le indique dónde verificar (fuente citada). No le importa qué modelo la generó ni si hubo cache hit.
 
-**Reviewer USD — persona que evalúa el portafolio.** Es un tech lead o hiring manager mirando el repo para decidir si Vlad es senior L5-L6. Su JTBD es *validar en menos de 10 minutos si este candidato piensa como arquitecto o solo como coder*. Espera ver decisiones justificadas (Constitution + ADRs), métricas contra baseline (eval framework), observabilidad real (dashboard Looker), y un producto que funciona en vivo con costo demostrable. No le impresiona una demo bonita sin telemetría detrás.
+**Owner — quien mantiene el sistema en producción.** Su JTBD es *mantener un servicio público estable sin quemar presupuesto ni acumular deuda técnica silenciosa*. Espera kill-switch confiable, alertas de costo, degradación elegante ante fallos de Vertex, telemetría accionable en un dashboard vivo, y trazabilidad completa desde issue en Jira hasta línea de código deployada.
 
-**Owner — Vlad como operador del sistema.** Su JTBD es *mantener un demo público que sirve a los dos anteriores sin quemar presupuesto ni acumular deuda técnica silenciosa*. Espera kill-switch confiable, alertas de costo, degradación elegante ante fallos de Vertex, y trazabilidad completa Jira → Confluence → repo → deploy.
-
-El diseño de v2 respeta las tres capas: el usuario final ve respuestas útiles en modo cliente; el reviewer ve el rigor debajo; el owner mantiene el sistema sin sorpresas.
+El diseño de v2 respeta ambas capas: el usuario final recibe respuestas útiles en modo cliente; el owner mantiene el sistema con visibilidad completa y sin sorpresas.
 
 ## 3. Alcance funcional v2
 
@@ -46,7 +44,7 @@ Seis features componen v2, descritas como comportamiento observable — no como 
 
 **Retrieval híbrido (POL-7).** El sistema recupera candidatos por dos vías en paralelo: índice denso (embeddings semánticos) e índice léxico (BM25 sobre los mismos chunks). Los dos resultados se fusionan por Reciprocal Rank Fusion. El comportamiento observable es que queries con términos exactos del producto, jerga interna o errores tipográficos leves recuperan chunks correctos que el índice denso solo no encontraba, y viceversa para queries conceptuales.
 
-**Telemetría estructurada + dashboard (POL-8).** Cada request emite un evento con timestamp, costo por componente (embed + generación + canonicalize), latencia por componente, intent detectado, chunks recuperados, cache hit/miss, idioma detectado y idioma de respuesta. Los eventos aterrizan en BigQuery y alimentan un dashboard en Looker Studio con las métricas anteriores agregadas. El comportamiento observable es que cualquier reviewer puede abrir el dashboard y ver el sistema operando en tiempo casi real, incluyendo simulaciones de picos de carga.
+**Telemetría estructurada + dashboard (POL-8).** Cada request emite un evento con timestamp, costo desglosado por componente (embed + generación + canonicalize), latencia por componente, intent detectado y confianza, chunks recuperados con score, cache hit/miss, idioma detectado del query, idioma de la respuesta generada, y estado del sistema al momento del request. Los eventos aterrizan en BigQuery y alimentan un dashboard en Looker Studio con las métricas anteriores agregadas, más un widget de **ahorro estimado** que compara el costo real facturado contra el costo contrafactual del mismo tráfico sin cache. El comportamiento observable es que cualquier persona con acceso al dashboard ve el sistema operando en tiempo casi real, incluyendo simulaciones de picos de carga y el ROI concreto de las optimizaciones de v2.
 
 **Multilingual explícito (POL-9).** El sistema detecta el idioma del query, recupera contra la KB completa sin importar el idioma de cada chunk, y responde en el idioma original del query. La KB permanece en su idioma técnico nativo (típicamente inglés para productos SaaS); es el LLM el que traduce en generación. El comportamiento observable es que una pregunta en español sobre un artículo en inglés se responde en español, con cita al chunk fuente en inglés.
 
@@ -64,7 +62,7 @@ Los criterios cuantitativos de v2 se definen empíricamente en POL-10 tras corre
 
 **Hybrid retrieval.** Dada una query con término exacto de producto o jerga interna que un dense retriever puro miss, cuando se ejecuta el retrieval, entonces el chunk correcto aparece en el top-K fusionado. Dado un query conceptual sin términos exactos, cuando se ejecuta el retrieval, entonces el híbrido no degrada respecto al dense-only en los mismos casos donde v1 acertaba.
 
-**Telemetría + dashboard.** Dado un request cualquiera al Worker, cuando termina de responder, entonces el evento correspondiente aparece en la tabla BigQuery en menos de un minuto. El dashboard Looker muestra al menos: costo total últimas 24h, latencia p50/p95 por componente, cache hit rate, distribución de intents, y volumen de requests. Un fallo del logger no afecta la respuesta al usuario (Principio III).
+**Telemetría + dashboard.** Dado un request cualquiera al Worker, cuando termina de responder, entonces el evento correspondiente aparece en la tabla BigQuery en menos de un minuto. El dashboard Looker muestra al menos: costo total últimas 24h, latencia p50/p95 por componente, cache hit rate, distribución de intents, distribución de idiomas de query y de respuesta, ahorro acumulado (costo real vs contrafactual sin cache), y volumen de requests. Un fallo del logger no afecta la respuesta al usuario (Principio III).
 
 **Multilingual.** Dado un query en un idioma distinto al mayoritario de la KB, cuando se procesa, entonces el retrieval recupera chunks relevantes sin importar su idioma, y la respuesta se genera en el idioma del query original con cita al chunk fuente en su idioma nativo.
 
@@ -101,6 +99,8 @@ Los siguientes items han sido considerados y quedan deliberadamente fuera de v2.
 30 días después del cierre de v2 con LIVE activado en producción, el sistema se considera exitoso si se cumplen las siguientes condiciones observables sobre el dashboard Looker.
 
 **Costo bajo control.** El gasto acumulado en Vertex + BigQuery se mantiene dentro del budget declarado en Wrangler sin activaciones del kill-switch por sobrecosto. Cache hit rate estabilizado por encima del nivel que POL-10 marque como target.
+
+**Ahorro demostrable.** El widget de ahorro estimado en el dashboard reporta una diferencia positiva y consistente entre costo facturado y costo contrafactual sin cache. La magnitud exacta se calibra empíricamente en POL-10; lo que se acepta como éxito es que el ahorro sea visible y no marginal.
 
 **Latencia dentro de SLO.** p95 end-to-end por debajo de 2 segundos en el path completo (Principio X). p95 en cache hits por debajo de 100 ms.
 
