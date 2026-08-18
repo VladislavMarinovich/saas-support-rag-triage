@@ -134,7 +134,55 @@ Cada campo se agrupa por bloque lógico. Las preguntas de negocio que cada bloqu
 
 ## 4. Fases de ejecución
 
-_A completar en commit siguiente._
+La implementación de v2 se ejecuta en nueve fases ordenadas por dependencia real, no por numeración de Historias Jira. El orden respeta el principio de que ninguna medición vale sin baseline, y ninguna optimización se activa antes de que haya un evento que optimizar.
+
+**Fase 0 — Preparación y discovery.**
+Cierra el Spec Kit y descubre empíricamente el schema definitivo antes de tocar infraestructura pesada. Sub-fases:
+- 0.a. Cerrar POL-3 (Spec) y POL-4 (Plan + ADRs). *Estado: en curso.*
+- 0.b. Discovery observacional: instrumentar el Worker actual con logs temporales, correr 30 queries variadas, capturar traces en `specs/001-polaris-v2/discovery/traces.jsonl` en formato XES-lite para permitir process mining futuro.
+- 0.c. Diseño de taxonomías (intents, modelo de clasificación) desde los traces reales.
+- 0.d. Schema BQ definitivo en `specs/001-polaris-v2/discovery/bq-schema.md` derivado de la observación.
+- 0.e. Crear dataset `polaris_prod_events` en BQ `us-central1`, namespace KV en Cloudflare, service accounts. Verificar permisos.
+
+**Fase 1 — Baseline de v1 con eval framework.**
+Historia relacionada: POL-10 (parcial).
+Ninguna mejora tiene sentido sin baseline. Se implementa el eval framework en `src/eval/`, se define corpus etiquetado de 30-50 queries en varios idiomas con chunks esperados y respuestas esperadas, se corre el framework contra v1 (dense-only, KB actual) y se publica el baseline en `specs/001-polaris-v2/baseline.md`.
+
+**Fase 2 — KB expansion.**
+Historia relacionada: POL-11.
+Se expande la KB a 60-100 artículos manteniendo la estructura H2 actual. Se re-chunkean, se re-embedean con `text-embedding-005` (mismo modelo — ADR pertinente indica no cambiar en v2), se actualiza el índice denso del Worker, y se re-corre el eval sobre la KB expandida para verificar que el retrieval no degrada por dilución.
+
+**Fase 3 — Multilingual explícito.**
+Historia relacionada: POL-9.
+Se agrega detección de idioma en el Worker antes de canonicalize. Se actualiza el prompt del sistema para instruir explícitamente responder en el idioma del query. Se agregan queries multilingüe al corpus de eval. Se ajusta la UI del cliente para mostrar cita al chunk fuente aunque esté en otro idioma que la respuesta.
+
+**Fase 4 — Canonicalize + cache.**
+Historia relacionada: POL-6. ADR asociado: 0001.
+Se diseña el prompt de canonicalize (Flash Lite, output < 20 tokens), se implementa el hash SHA-256 sobre la forma canónica más el idioma detectado, se integra el KV lookup antes del retrieval. TTL escalonado por hash entre 24 y 39 horas. Se instrumenta `cache_hit_type` como campo del evento.
+
+**Fase 5 — Retrieval híbrido BM25 + dense + RRF.**
+Historia relacionada: POL-7. ADRs asociados: 0004, 0005.
+Se implementa el tokenizer BM25 stemmer-less multilingual. Se construye el índice BM25 offline en Python y se exporta como JSON bundled en el Worker. Se implementa la función de scoring BM25 en el Worker. Se implementa RRF k=60 sobre top-20 de cada método. La decisión de re-chunking queda abierta hasta ver eval: solo se re-chunkea si los datos lo justifican (Principio VI y XII).
+
+**Fase 6 — Modo cliente en generación.**
+Historia relacionada: descrita en Spec sección 3 como comportamiento observable.
+Se actualiza el prompt del sistema con instrucción explícita de "modo cliente": lenguaje del usuario final, sin jerga interna del producto salvo términos exactos, sin referencias meta, estructura orientada a acción. Se agregan ejemplos few-shot al prompt. Se validan 10 respuestas manualmente contra el criterio "pegable en chat de soporte sin edición".
+
+**Fase 7 — Telemetría estructurada + dashboard.**
+Historia relacionada: POL-8. ADRs asociados: 0002, 0003.
+Se implementa la función `emitEvent()` con el schema definitivo. Se envuelve el flow del Worker con `ctx.waitUntil(emitEvent(...))`. Feature flag `TELEMETRY_ENABLED` para kill-switch. Se conecta Grafana Cloud a BigQuery como datasource. Se crean los primeros dashboards versionados en `observability/dashboards/*.json`. Widgets iniciales: costo 24h, latencia p50/p95, cache hit rate, distribución de intents, distribución de idiomas, ahorro estimado, volumen de requests. Se simula pico de carga con script Python para poblar el dashboard sintéticamente.
+
+**Fase 8 — Eval final v1 vs v2.**
+Historia relacionada: POL-10 (completa).
+Se corre el eval framework sobre el corpus completo comparando v1 (baseline de Fase 1) contra v2 (estado tras Fases 2-7). Se genera tabla comparativa con delta por métrica: Recall@1, Recall@5, Precision@5, MRR, latencia p50/p95, costo promedio. Los targets cuantitativos declarados como TBD en la Spec se congelan aquí con justificación empírica. La tabla se publica en las release notes de v2.
+
+**Fase 9 — Cierre y publicación.**
+Se activa `LIVE=true` con budget diario declarado en Wrangler. Se verifican alertas de budget al 50%, 80% y 100%. Se actualiza el README público del repo (en inglés) con el nuevo estado del demo, links al dashboard público de Grafana, y al artefacto "Anatomía de Polaris". Se configura el custom domain `grafana.marinovich.co` vía CNAME. Confluence se sincroniza con el estado final.
+
+**Dependencias entre fases.** La Fase 0 debe cerrar antes que cualquier otra. La Fase 1 (baseline) debe cerrar antes de las Fases 2-6 (para que la comparación tenga sentido). Las Fases 2-6 pueden solaparse parcialmente si se coordina. La Fase 7 requiere el schema definitivo de Fase 0.d. La Fase 8 requiere que todo lo anterior esté congelado. La Fase 9 solo cuando la 8 pasa criterios.
+
+**Timeline estimado.** ~6-8 semanas al ritmo de 10-12 horas/semana declarado para Polaris. Estimado que se refina en POL-5 (Tasks breakdown).
+
 
 ## 5. Integración con el Worker actual
 
