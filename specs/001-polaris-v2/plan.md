@@ -186,7 +186,68 @@ Se activa `LIVE=true` con budget diario declarado en Wrangler. Se verifican aler
 
 ## 5. Integración con el Worker actual
 
-_A completar en commit siguiente._
+El Worker de v1 en `worker/index.js` responde a producción hoy. La estrategia de integración de v2 se rige por un principio: **v1 y v2 coexisten en el mismo archivo durante desarrollo, con flags que permiten activar cada feature de v2 de forma independiente**. Un rollback siempre es una línea de configuración, no un revert de código.
+
+**Feature flags declarados en `wrangler.toml`.**
+
+```
+[vars]
+LIVE = "false"              # kill-switch global (Constitution Principio IV)
+V2_CANONICALIZE = "false"   # activa canonicalize + cache lookup (Fase 4)
+V2_HYBRID = "false"         # activa BM25 + RRF sobre el dense actual (Fase 5)
+V2_MULTILINGUAL = "false"   # activa deteccion de idioma y prompt bilingue (Fase 3)
+V2_MODE_CLIENTE = "false"   # activa prompt en modo cliente (Fase 6)
+TELEMETRY_ENABLED = "false" # activa el sink a BQ via waitUntil (Fase 7)
+```
+
+Cada flag se activa independientemente en producción. El orden de activación es el orden de las fases: multilingual y modo cliente son cambios de prompt cero-riesgo; canonicalize y hybrid son cambios de flow que se activan tras confirmar el eval; telemetría se activa antes que las anteriores para que el eval se pueda medir contra tráfico real.
+
+**Estructura del código en el Worker.**
+
+```
+worker/
+├── index.js               # entry point, orquestacion
+├── canonicalize.js        # POL-6, Fase 4
+├── cache.js               # KV wrapper, Fase 4
+├── retrieval/
+│   ├── dense.js           # el actual de v1
+│   ├── bm25.js            # POL-7, Fase 5
+│   ├── rrf.js             # POL-7, Fase 5
+│   └── bm25_index.json    # bundle offline
+├── language.js            # deteccion de idioma, Fase 3
+├── prompts/
+│   ├── system.md          # prompt v1 (actual)
+│   └── system_v2.md       # prompt v2 con modo cliente, Fase 6
+├── telemetry.js           # emit_event + JWT + KV token cache, Fase 7
+└── auth/
+    └── bq_jwt.js          # firma JWT y obtencion de access token
+```
+
+**Ruta hot path condicional.** El `index.js` mantiene la lógica de flags al inicio de cada request:
+
+```
+1. Recibir request
+2. Si LIVE=false → responder demo_paused (503) y salir
+3. Si V2_MULTILINGUAL=true → detectar idioma
+4. Si V2_CANONICALIZE=true → canonicalize + cache lookup
+5.   Si cache hit → responder desde KV, saltar a paso 10
+6. Retrieval:
+     Si V2_HYBRID=true → BM25 + dense + RRF
+     Si no → dense-only (v1)
+7. Generación:
+     Si V2_MODE_CLIENTE=true → prompt v2
+     Si no → prompt v1
+8. Responder al usuario
+9. (background) Si V2_CANONICALIZE=true → guardar en KV
+10. (background) Si TELEMETRY_ENABLED=true → waitUntil(emit_event)
+```
+
+El código v1 nunca se elimina durante la transición. La ruta v1 sigue viva bajo `V2_*=false`. Cuando v2 se estabiliza en producción y el eval confirma no-regresión, los flags v2 se ponen `true` en `wrangler.toml`, y en una fase posterior de limpieza (fuera del scope de POL-4) se puede refactorizar quitando el código muerto de v1.
+
+**Testing en desarrollo.** Se usa `wrangler dev` local con dos archivos `.dev.vars` (fuera de git): uno con flags v1 (`.dev.vars.v1`) y uno con flags v2 (`.dev.vars.v2`). Cambiar entre versiones es cambiar el archivo activo, no cambiar código. El eval framework corre contra ambos configuraciones para producir la tabla comparativa de Fase 8.
+
+**Rollback en producción.** Ante cualquier degradación observada en el dashboard tras activar un flag de v2, se ejecuta `wrangler secret put V2_<FEATURE> false` y el rollback está vivo en < 30 segundos globalmente. No requiere redeploy de código, no requiere revert, no requiere ceremonia. Es la ventaja arquitectónica de mantener las dos versiones cohabitando en el mismo Worker.
+
 
 ## 6. Convenciones del proyecto
 
