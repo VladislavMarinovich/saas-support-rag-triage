@@ -56,7 +56,21 @@ Seis features componen v2, descritas como comportamiento observable — no como 
 
 ## 4. Criterios de aceptación
 
-_A completar en commit siguiente._
+Los criterios cuantitativos de v2 se definen empíricamente en POL-10 tras correr el baseline de v1 sobre el eval framework. Publicar targets antes de tener baseline produce números arbitrarios. Los targets finales se anunciarán en las release notes con justificación de por qué se eligió cada umbral y no otro. Lo que sí queda fijado en esta spec es el criterio cualitativo por feature: qué comportamiento observable debe existir para considerar la feature aceptada.
+
+**Canonicalize + cache.** Dado un usuario que hace una pregunta previamente respondida (misma forma canónica en la ventana TTL), cuando se procesa el request, entonces se sirve del cache con latencia p95 sensiblemente menor a la del path completo. La forma canónica ignora orden de palabras, mayúsculas, puntuación y variantes triviales de fraseo. El idioma del query original se preserva en la respuesta servida por cache.
+
+**Hybrid retrieval.** Dada una query con término exacto de producto o jerga interna que un dense retriever puro miss, cuando se ejecuta el retrieval, entonces el chunk correcto aparece en el top-K fusionado. Dado un query conceptual sin términos exactos, cuando se ejecuta el retrieval, entonces el híbrido no degrada respecto al dense-only en los mismos casos donde v1 acertaba.
+
+**Telemetría + dashboard.** Dado un request cualquiera al Worker, cuando termina de responder, entonces el evento correspondiente aparece en la tabla BigQuery en menos de un minuto. El dashboard Looker muestra al menos: costo total últimas 24h, latencia p50/p95 por componente, cache hit rate, distribución de intents, y volumen de requests. Un fallo del logger no afecta la respuesta al usuario (Principio III).
+
+**Multilingual.** Dado un query en un idioma distinto al mayoritario de la KB, cuando se procesa, entonces el retrieval recupera chunks relevantes sin importar su idioma, y la respuesta se genera en el idioma del query original con cita al chunk fuente en su idioma nativo.
+
+**Eval framework.** Dado un cambio en retrieval, prompt o modelo, cuando se abre un PR, entonces el checklist del PR incluye la salida del eval con delta contra baseline v1. Un PR sin eval no se mergea. El framework corre local sin depender del Worker en vivo.
+
+**Modo cliente.** Dada una respuesta generada por Polaris, cuando un revisor humano la lee, entonces la respuesta pasa el test de "esto se pega en el chat con el cliente sin editar": sin jerga interna, sin referencias meta al sistema, sin verbosidad innecesaria, con estructura orientada a acción.
+
+**KB expansion.** Dada la KB expandida, cuando se ejecuta el eval framework sobre queries de dominio conocido, entonces la cobertura aumenta respecto a la KB de v1 y las métricas de retrieval no degradan significativamente por dilución.
 
 ## 5. Fuera de alcance (v2.1+)
 
