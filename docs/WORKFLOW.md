@@ -97,24 +97,24 @@ Usar la plantilla `.github/pull_request_template.md`.
 
 ## 5. Merge strategy
 
-**Squash and merge.**
+**Rebase and merge.**
 
-- Mantiene la historia de `main` lineal y limpia (1 commit por PR).
-- Preserva los commits granulares dentro de la rama para debugging.
-- Convención del squash title: mismo formato Conventional Commits.
+- Mantiene la historia de `main` lineal (sin commit de merge).
+- Preserva TODOS los commits granulares en `main` — consistente con la regla operativa de commits granulares (1 cambio = 1 commit). La granularidad no se aplasta al mergear; se conserva como trazabilidad de primera clase.
+- Los commits mantienen su título original (Conventional Commits) y su body con `Refs POL-XX`.
 
-Ejemplo del commit final en `main` tras squash:
+Ejemplo de `main` tras rebase-and-merge del PR #12 (POL-7 hybrid retriever):
 
 ```
-feat(retrieval): hybrid BM25 + semantic + RRF (#12)
-
-* build BM25 stemmer-less index desde chunks del KB
-* export a worker/bm25_index.json bundled
-* worker/hybrid_search.js con RRF k=60
-* integración en flow principal
-
-Refs POL-7
+main:
+  * feat(retrieval): integracion RRF en flow principal (POL-7)
+  * feat(retrieval): worker/hybrid_search.js con RRF k=60 (POL-7)
+  * feat(retrieval): export bm25_index.json bundled (POL-7)
+  * feat(retrieval): build BM25 stemmer-less index desde chunks KB (POL-7)
+  * ...commits anteriores...
 ```
+
+Cada commit se puede revertir individualmente si un cambio específico rompe algo, y `git log` de `main` refleja el trabajo real hecho, no una vista comprimida.
 
 ## 6. Después del merge
 
@@ -128,7 +128,7 @@ Refs POL-7
 GitHub Free no soporta branch protection en repos privados. La convención es la ley:
 
 - No push directo a `main`.
-- Squash es el único merge permitido.
+- Rebase-and-merge es el único merge permitido.
 - La rama fuente se borra después del merge.
 
 Cuando el proyecto tenga presupuesto para GitHub Pro ($4/mes), se activarán reglas técnicas de protección.
