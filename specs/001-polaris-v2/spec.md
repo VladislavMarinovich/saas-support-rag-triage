@@ -26,7 +26,15 @@ v2 aborda estas cuatro carencias como un solo ciclo cerrado — canonicalizació
 
 ## 2. Usuarios y jobs-to-be-done
 
-_A completar en commit siguiente._
+Polaris sirve simultáneamente a tres audiencias con expectativas distintas. La spec optimiza para las tres sin comprometer a ninguna.
+
+**Usuario final — persona que hace la pregunta.** Puede ser un agente de soporte que necesita responder rápido a un cliente, o el propio cliente resolviéndose solo. Su JTBD es *resolver un problema concreto sin leer documentación completa*. Espera una respuesta corta, en su idioma, con lenguaje del usuario y no jerga de producto, y que le indique dónde verificar (fuente citada). No le importa qué modelo la generó ni si hubo cache hit.
+
+**Reviewer USD — persona que evalúa el portafolio.** Es un tech lead o hiring manager mirando el repo para decidir si Vlad es senior L5-L6. Su JTBD es *validar en menos de 10 minutos si este candidato piensa como arquitecto o solo como coder*. Espera ver decisiones justificadas (Constitution + ADRs), métricas contra baseline (eval framework), observabilidad real (dashboard Looker), y un producto que funciona en vivo con costo demostrable. No le impresiona una demo bonita sin telemetría detrás.
+
+**Owner — Vlad como operador del sistema.** Su JTBD es *mantener un demo público que sirve a los dos anteriores sin quemar presupuesto ni acumular deuda técnica silenciosa*. Espera kill-switch confiable, alertas de costo, degradación elegante ante fallos de Vertex, y trazabilidad completa Jira → Confluence → repo → deploy.
+
+El diseño de v2 respeta las tres capas: el usuario final ve respuestas útiles en modo cliente; el reviewer ve el rigor debajo; el owner mantiene el sistema sin sorpresas.
 
 ## 3. Alcance funcional v2
 
