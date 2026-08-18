@@ -94,12 +94,14 @@ Content-Type: application/json
 - **Sin backpressure**: si BQ está saturado, el Worker no lo sabe hasta que el insert falla. Aceptado: BQ streaming rara vez satura para nuestro perfil de tráfico.
 - **Auth vía service account JSON como secret**: la private key vive en Cloudflare Workers secrets. Compromiso del stack Cloudflare compromete el acceso BQ. Aceptado: mitigación es rotar la key periódicamente y limitar el scope del service account a `bigquery.dataEditor` sobre el dataset `polaris_prod_events` únicamente.
 
-## Cuándo revisitar este ADR
+## Métricas de vigilancia
 
-- Volumen sostenido supera 100 requests/segundo (batching empieza a rendir).
-- Pérdida de eventos observada supera 0.5% durante un mes.
-- Se requiere garantía de entrega end-to-end (por ejemplo, factura a cliente basada en telemetría).
-- Se necesita reprocesamiento (Queues + consumidor daría replay natural).
+| SLI (campo del schema BQ + widget dashboard) | Umbral que dispara reevaluación | Acción |
+|---|---|---|
+| **`bq_insert_success_rate`** — porcentaje de eventos que aterrizaron exitosamente en BQ (medido con contador dual: requests con `waitUntil` disparado vs filas efectivas insertadas comparadas por ventana). Widget: gauge. | < 99.5% durante 7 días. | Revisar auth (JWT expiration, service account permisos), quotas de BQ, errores en Cloudflare Workers Logs. |
+| **`waitUntil_hang_p95`** — latencia p95 del `waitUntil(sendToBQ)` medido desde emisión hasta ack de BQ. Widget: time series. | > 3 s p95 durante 7 días. | Cloudflare mata Workers a los 30 s de inactividad; latencias altas indican riesgo de eventos perdidos por corte del Worker. Considerar retry con timeout más agresivo o migrar a Queues (opción B). |
+| **`telemetry_flag_off_duration`** — tiempo acumulado con `TELEMETRY_ENABLED=false` fuera de ventanas de mantenimiento programado. Widget: stat. | > 4 h por día sin justificación en el log de operaciones. | Alerta a owner: se están perdiendo datos sin notarlo. Reactivar flag o documentar razón. |
+| **`bq_insert_volume_daily`** — eventos insertados por día vs proyección de tráfico. Widget: time series comparativo. | Volumen cae > 30% respecto al promedio móvil de 30 días sin caída correspondiente en tráfico del Worker. | Indica pérdida silenciosa de eventos. Investigar canal BQ o auth. |
 
 ## Referencias
 
