@@ -74,12 +74,48 @@ Los criterios cuantitativos de v2 se definen empíricamente en POL-10 tras corre
 
 ## 5. Fuera de alcance (v2.1+)
 
-_A completar en commit siguiente._
+Los siguientes items han sido considerados y quedan deliberadamente fuera de v2. La regla operativa de scope freeze v(N+1) aplica: no se debaten ni se agregan hasta cerrar v2.
+
+**Re-embedding con modelo superior** (por ejemplo `gemini-embedding-001` o `text-multilingual-embedding-002`). Cambiarlo en v2 rompe la comparabilidad del baseline y confunde la atribución de mejora. Se evalúa en v2.1 con eval propio.
+
+**Re-chunking activo** más allá del baseline. Queda como decisión empírica dentro de POL-7 o POL-10 si los datos lo justifican; no se rediseña proactivamente.
+
+**Classifier local de labels** (LogReg / XGBoost) reemplazando al LLM en clasificación. Consistente con Principio V pero exige pipeline offline propio, versionado de modelo, y monitoreo de drift — trabajo suficiente para su propia versión.
+
+**HyDE** (Hypothetical Document Embeddings) o query rewriting para retrieval más allá de canonicalize. Suma complejidad y latencia; se evalúa solo si POL-10 muestra retrieval como cuello de botella real.
+
+**Migración a Vector DB dedicada** (Cloudflare Vectorize o similar). Con < 1000 chunks, el índice en memoria en el Worker basta; migrar antes es prematuro.
+
+**Feedback loop del usuario** (thumbs up/down persistidos). Requiere modelo de datos propio y consentimiento; interesante pero secundario a las carencias que resuelve v2.
+
+**Redacción de PII en KB o queries.** No está en el path de un demo de portafolio; se activa cuando haya cliente real con datos sensibles.
+
+**Rerank cross-encoder** entre retrieval y generación. Sujeto a Principio X (p95 < 2s) — solo entra si el margen de latencia lo permite tras medir baseline.
 
 ## 6. Métricas post-launch
 
-_A completar en commit siguiente._
+30 días después del cierre de v2 con LIVE activado en producción, el sistema se considera exitoso si se cumplen las siguientes condiciones observables sobre el dashboard Looker.
+
+**Costo bajo control.** El gasto acumulado en Vertex + BigQuery se mantiene dentro del budget declarado en Wrangler sin activaciones del kill-switch por sobrecosto. Cache hit rate estabilizado por encima del nivel que POL-10 marque como target.
+
+**Latencia dentro de SLO.** p95 end-to-end por debajo de 2 segundos en el path completo (Principio X). p95 en cache hits por debajo de 100 ms.
+
+**Multilingual en uso real.** Al menos dos idiomas distintos aparecen en la distribución de idioma detectado en el dashboard, con métricas de retrieval comparables entre ellos (sin sesgo severo hacia el idioma mayoritario de la KB).
+
+**Eval no regresa.** Cualquier PR mergeado en el mes trae eval adjunto y no degrada Recall@5 ni MRR contra el baseline v2 inicial.
+
+**Uso demoable.** El dashboard es lo suficientemente estable y presentable para que Vlad pueda compartirlo en vivo con un reviewer USD durante una entrevista, sin cirugía previa.
 
 ## 7. Riesgos y mitigaciones
 
-_A completar en commit siguiente._
+Cinco riesgos reales identificados durante Planear. Cada uno con mitigación explícita para que no requiera decisión bajo presión más adelante.
+
+**Costo de BigQuery streaming supera lo previsto.** Aunque el volumen del demo es bajo, `waitUntil` puede acumular inserts si la cardinalidad explota (por ejemplo, chunks recuperados como columna anidada). Mitigación: schema minimalista en el sink, agregación diaria en tabla separada, y alertas de budget al 50% / 80% / 100% del budget diario BQ.
+
+**Cold cache invalida la promesa de latencia.** Si el cache KV está vacío tras un deploy o expira en bloque, la primera oleada de queries paga el path completo y el p95 se degrada temporalmente. Mitigación: TTL escalonado por hash de query (no todos expiran juntos), y warm-up opcional de queries top-N en deploy.
+
+**BM25 stemmer-less degrada en algunos idiomas.** Sin stemming, ciertas familias morfológicas ricas (español, ruso, alemán) pierden matches por variantes flexionales. Mitigación: eval multilingual por idioma; si un idioma cae bajo umbral aceptable en POL-10, se activa stemmer específico solo para él (Principio XIV permite especialización empíricamente justificada).
+
+**Chunk size actual no óptimo para retrieval híbrido.** Los chunks estructurales por sección H2 fueron optimizados para dense; BM25 puede preferir tamaños distintos. Mitigación: la decisión queda abierta, no fijada; el eval framework compara alternativas si los datos lo sugieren.
+
+**Kill-switch flapping.** Si el budget se toca varias veces al día por picos, el estado `LIVE` puede alternar y confundir tanto al usuario como a la telemetría. Mitigación: histéresis en la lógica de activación (una vez cortado, requiere intervención manual para reactivar dentro del ciclo de budget), y estado `demo_paused` explícito en la UI en lugar de error genérico.
