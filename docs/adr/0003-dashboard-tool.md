@@ -92,12 +92,15 @@ Free tier permite **Public Dashboards** — un dashboard puede exponerse vía UR
 - **Los JSON de Grafana no son diff-friendly** — tienen campos como `id` y `version` que cambian con cada save. Mitigación: `deploy-dashboards.sh` normaliza el JSON (borra IDs volátiles) antes de commit, o se usa un pre-commit hook. Detalle operativo, no bloqueante.
 - **IaC completo (Terraform / Grafonnet) descartado en v2.** Para 1-2 dashboards y ~15 paneles, Dashboard as Code por JSON es proporcional; Terraform sería sobre-ingeniería. Se reevalúa en v2.1 si el volumen de dashboards crece.
 
-## Cuándo revisitar este ADR
+## Métricas de vigilancia
 
-- Se pasa de 2 dashboards a 5+ (empieza a pesar el mantenimiento manual del JSON).
-- Se necesita gestionar data sources, alertas y folders también como código.
-- El equipo crece a > 3 personas editando dashboards (Terraform aporta review en HCL).
-- Grafana Cloud Free tier deja de cubrir el volumen y hay que pasar a self-host.
+| SLI (herramienta / instrumento) | Umbral que dispara reevaluación | Acción |
+|---|---|---|
+| **`dashboard_query_latency_p95`** — latencia p95 de las queries de Grafana contra BigQuery. Medido con Grafana metrics internos o pruebas periódicas manuales. | > 5 s p95 durante 7 días. | Verificar región: Grafana US East (OH) debe seguir emparejado con BQ `us-central1`. Considerar materializar vistas agregadas en BQ (crear tablas resumen actualizadas cada 5 min) para acelerar dashboards. |
+| **`grafana_uptime_monthly`** — uptime del stack Grafana Cloud reportado por Grafana Labs. | < 99.5% en 30 días consecutivos. | Escalar issue con soporte de Grafana Labs (aunque free tier no da SLA formal). Reevaluar opción E (self-host) si el patrón persiste. |
+| **`dashboard_json_drift`** — cantidad de dashboards cuya definición en la UI difiere del JSON versionado en `observability/dashboards/*.json`. Verificable con script comparador periódico. | > 0 durante 7 días. | Si el cambio en UI era intencional, exportar el JSON y committear. Si no, correr `scripts/deploy-dashboards.sh` para restaurar. Drift es señal de que alguien está editando sin PR. |
+| **`grafana_active_series_pct`** — porcentaje del cap de 10k active series consumido en el free tier. Widget: gauge en Cloud settings. | > 80% consumido durante 3 días. | Auditar métricas emitidas — puede haber alta cardinalidad no intencional. Si el uso es legítimo, escalar a plan pago. |
+| **`dashboard_count`** — cantidad de dashboards versionados en repo. | > 5 dashboards. | Reabrir ADR para evaluar migración a Terraform provider (opción C) o Grafonnet (opción D). Manejar 6+ dashboards manualmente en JSON se vuelve tedioso. |
 
 ## Referencias
 
