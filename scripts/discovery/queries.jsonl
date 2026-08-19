@@ -1,0 +1,30 @@
+{"id":"es-01","lang":"es","category":"tipica","text":"cómo conecto Google Analytics 4 a Polaris"}
+{"id":"es-02","lang":"es","category":"tipica","text":"por qué mi dashboard aparece en blanco"}
+{"id":"es-03","lang":"es","category":"tipica","text":"cómo cambio mi plan de suscripción"}
+{"id":"es-04","lang":"es","category":"tipica","text":"quiero programar un reporte semanal para el equipo"}
+{"id":"es-05","lang":"es","category":"tipica","text":"cómo invito a un compañero como editor"}
+{"id":"es-06","lang":"es","category":"tipica","text":"la alerta que configuré ayer no llegó al Slack"}
+{"id":"es-07","lang":"es","category":"tipica","text":"me sale permiso denegado al abrir un dashboard"}
+{"id":"es-08","lang":"es","category":"tipica","text":"cómo configuro las UTMs de atribución"}
+{"id":"es-09","lang":"es","category":"tipica","text":"el conector de HubSpot expiró y necesito reautorizarlo"}
+{"id":"es-10","lang":"es","category":"tipica","text":"cómo se define una North Star en Polaris"}
+{"id":"en-01","lang":"en","category":"tipica","text":"how do I connect HubSpot to Polaris"}
+{"id":"en-02","lang":"en","category":"tipica","text":"why is my dashboard blank"}
+{"id":"en-03","lang":"en","category":"tipica","text":"how can I schedule a weekly report"}
+{"id":"en-04","lang":"en","category":"tipica","text":"how do I invite a teammate with editor permissions"}
+{"id":"en-05","lang":"en","category":"tipica","text":"my scheduled report isn't arriving"}
+{"id":"en-06","lang":"en","category":"tipica","text":"how do I change my billing plan"}
+{"id":"en-07","lang":"en","category":"tipica","text":"how do I set up UTM attribution"}
+{"id":"en-08","lang":"en","category":"tipica","text":"why did my connector stop syncing"}
+{"id":"en-09","lang":"en","category":"tipica","text":"how does the attribution model work"}
+{"id":"en-10","lang":"en","category":"tipica","text":"the alert I set yesterday never fired"}
+{"id":"typo-01","lang":"es","category":"typo","text":"como coneto ga4 al polaris"}
+{"id":"typo-02","lang":"en","category":"typo","text":"how do i chnage my billling plan"}
+{"id":"typo-03","lang":"es","category":"jerga","text":"reautorizar oauth del conector hubspot"}
+{"id":"typo-04","lang":"en","category":"jerga","text":"api key rotation for hubspot connector"}
+{"id":"typo-05","lang":"es","category":"typo","text":"dashboards no cargan tras cambio plan"}
+{"id":"amb-01","lang":"es","category":"fuera_dominio","text":"puedes reservarme un vuelo a Buenos Aires"}
+{"id":"amb-02","lang":"en","category":"fuera_dominio","text":"does Polaris support TikTok Ads"}
+{"id":"amb-03","lang":"es","category":"ambigua","text":"no me funciona"}
+{"id":"amb-04","lang":"en","category":"ambigua","text":"help"}
+{"id":"amb-05","lang":"es","category":"fuera_dominio","text":"qué opinas del precio de Bitcoin hoy"}
