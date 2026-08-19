@@ -66,13 +66,14 @@ No real users, no PII.
 
 ## 💸 Unit economics
 
-Grounded answers run on Gemini 2.5 Flash-Lite over a cosine retrieval (no dedicated vector DB). At a typical answer size:
+Grounded answers run on Gemini 2.5 Flash-Lite over a cosine retrieval (no dedicated vector DB). Measured empirically on 2026-08-19 with a 30-query discovery corpus (mix of ES/EN, typos, and out-of-domain queries):
 
-- **~US$0.0002 per grounded answer** (retrieved context in + ~200 tokens out)
-- **≈ 5,500 answers per US$1**
-- The whole project — dataset generation + embeddings + inference — ran on GCP for **~US$1.75**, fully covered by free-tier credits.
+- **~US$0.000084 per grounded answer** (median measured cost — input ~700 tokens, output ~120 tokens)
+- **≈ 11,100 answers per US$1** (~2× better than earlier estimate on older Gemini pricing)
+- End-to-end latency **p50: 1.02 s · p95: 1.75 s** measured against Vertex AI in `us-central1` from the same discovery corpus.
+- The whole project — dataset generation + embeddings + inference — has run on GCP for **~US$1.75 total**, fully covered by free-tier credits.
 
-Cost stays low **by design**: only `kb_autoresolve` tickets hit the LLM; the rest get templated acknowledgments at **$0**.
+Cost stays low **by design**: only `kb_autoresolve` tickets hit the LLM; the rest get templated acknowledgments at **$0**. Full unit economics breakdown lives in `specs/001-polaris-v2/discovery/findings.md`.
 
 ## Notebooks
 
