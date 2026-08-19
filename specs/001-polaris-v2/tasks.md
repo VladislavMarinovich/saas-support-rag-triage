@@ -195,7 +195,85 @@ Normalización de la query a forma canónica idioma-agnóstica + cache persisten
 
 ## POL-7 — Retrieval híbrido BM25 + dense + RRF
 
-_A completar en commit siguiente._
+Recuperación por dos vías en paralelo (índice denso existente + BM25 léxico sobre los mismos chunks) fusionadas por Reciprocal Rank Fusion con k=60. Comportamiento observable: queries con términos exactos, jerga o typos leves recuperan chunks que el dense solo no encontraba, sin degradar los casos conceptuales donde v1 acertaba.
+
+**Referencias:** Spec §3 (Retrieval híbrido), ADR-0004 (BM25 stemmer-less multilingüe), ADR-0005 (RRF k=60), ADR-0006 (rerank rechazado), criterio de aceptación Spec §4.
+
+**[Ajuste post-discovery]** El discovery reveló un **chunk imán**: `dashboards-not-loading::1-check-your-internet-connection` domina el top-1 en queries que no le corresponden. La hipótesis es que su fraseo genérico lo hace semánticamente cercano a demasiadas queries. POL-7 debe diagnosticarlo y verificar si el híbrido lo mitiga; la SLI `chunk_dominance_top1_ratio` (umbral > 10% sostenido 30 días, ADR-0005) queda vigilando la recaída.
+
+#### 7.1 Documentar spec del índice BM25
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** —
+- **Criterio de aceptación:** `docs/features/bm25.md` define la tokenización stemmer-less multilingüe (según ADR-0004), la estructura del índice, dónde se persiste y cómo se reconstruye cuando cambia la KB.
+- **Jira ID:** —
+
+#### 7.2 Implementar tokenizador + índice BM25
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 7.1
+- **Criterio de aceptación:** índice BM25 sobre los mismos chunks del índice denso; tests unitarios con términos exactos del producto, jerga del corpus discovery y queries en ES/EN; gobernado por feature flag `V2_HYBRID`.
+- **Jira ID:** —
+
+#### 7.3 Documentar spec de la fusión RRF
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** 7.1
+- **Criterio de aceptación:** `docs/features/rrf.md` define la fórmula con k=60, el manejo de empates, el top-K final que entra al prompt de generación y qué pasa cuando una de las dos vías devuelve vacío.
+- **Jira ID:** —
+
+#### 7.4 Implementar fusión RRF en el hot path
+
+- **Agente:** Opus 5
+- **Estimado:** 1.5h
+- **Depende de:** 7.2, 7.3
+- **Criterio de aceptación:** dense y BM25 corren en paralelo y se fusionan por RRF tras `V2_HYBRID`; flag off = dense-only v1 intacto; tests de integración de la fusión.
+- **Jira ID:** —
+
+#### 7.5 [Ajuste post-discovery] Diagnóstico del chunk imán
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 7.4
+- **Criterio de aceptación:** causa raíz del dominio de `dashboards-not-loading::1-check-your-internet-connection` documentada en `bitacora/hallazgos.md` con evidencia (scores comparados antes/después del híbrido); decisión explícita entre reescribir el chunk, ajustar chunking o aceptar y vigilar por SLI. Si la decisión implica re-chunking activo, se respeta el scope freeze del Spec §5 y se difiere con registro.
+- **Jira ID:** —
+
+#### 7.6 Tests de integración del retrieval híbrido
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 7.4
+- **Criterio de aceptación:** suite cubre: query con término exacto que dense-only fallaba → chunk correcto en top-K; query conceptual donde v1 acertaba → sin degradación; query con typo leve → recupera; flag off = comportamiento v1 byte a byte.
+- **Jira ID:** —
+
+#### 7.7 Verificación en sandbox: híbrido vs dense-only
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 7.5, 7.6
+- **Criterio de aceptación:** las 30 queries del corpus corridas con flag on y off; comparadas `kb_coverage_pct` y `chunk_dominance_top1_ratio` contra el baseline del discovery (25% de chunks huérfanos, dominancia del chunk imán); resultados en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 7.8 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 7.7
+- **Criterio de aceptación:** diff auditado contra specs 7.1/7.3, ADR-0004/0005/0006 y Constitution; cero críticos abiertos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 7.9 Sync a Confluence + cierre
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 7.8
+- **Criterio de aceptación:** docs de features en Confluence; worklog derivado de bitácora; POL-7 transicionada a Listo.
+- **Jira ID:** —
+
+**Total estimado POL-7: ~8.75h** (9 subtareas; incluye 1h del ajuste post-discovery que v1 del plan no contemplaba).
 
 ## POL-8 — Telemetría estructurada + dashboard
 
