@@ -107,7 +107,91 @@ Cerrada 2026-08-19. PR pendiente. Rama `feature/POL-5-tasks-breakdown`. Este doc
 
 ## POL-6 — Canonicalize + KV cache
 
-_A completar en commit siguiente._
+Normalización de la query a forma canónica idioma-agnóstica + cache persistente en Cloudflare KV (ADR-0001). Comportamiento observable: dos fraseos equivalentes reciben la misma respuesta y la segunda es sensiblemente más rápida, preservando el idioma del query original.
+
+**Referencias:** Spec §3 (Canonicalización + cache), Plan §4 fase correspondiente, ADR-0001, criterio de aceptación Spec §4.
+
+#### 6.1 Documentar spec de canonicalize
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** —
+- **Criterio de aceptación:** `docs/features/canonicalize.md` define input/output, la regla de forma canónica (ignora orden de palabras, mayúsculas, puntuación y variantes triviales de fraseo), los casos edge (typos, jerga, acentos, queries fuera de dominio) y cómo se preserva el idioma original para servir desde cache.
+- **Jira ID:** —
+
+#### 6.2 Implementar canonicalize en Worker
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 6.1
+- **Criterio de aceptación:** módulo de canonicalización con tests unitarios que cubren los casos del spec 6.1 (incluyendo los 5 typos/jerga del corpus discovery); gobernado por feature flag `V2_CANONICALIZE` (off = comportamiento v1 intacto).
+- **Jira ID:** —
+
+#### 6.3 Documentar spec del KV cache
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** 6.1
+- **Criterio de aceptación:** `docs/features/kv-cache.md` define el diseño de key (hash de forma canónica), el layout del value (respuesta + idioma + metadata mínima), TTL configurable, política de invalidación y qué NO se cachea (respuestas de confianza baja, `top1_score < 0.50` según hallazgo del discovery).
+- **Jira ID:** —
+
+#### 6.4 Crear namespace KV + wiring de configuración
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 6.3
+- **Criterio de aceptación:** namespace KV creado, binding en `wrangler.toml`, TTL parametrizado por variable de entorno; deploy a entorno dev verificado sin afectar v1.
+- **Jira ID:** —
+
+#### 6.5 Implementar read/write path del cache
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 6.2, 6.4
+- **Criterio de aceptación:** hot path consulta cache antes de retrieval; miss ejecuta cadena completa y persiste; hit sirve respetando idioma original; todo tras `V2_CANONICALIZE`. Un fallo de KV nunca rompe la respuesta al usuario (Principio III).
+- **Jira ID:** —
+
+#### 6.6 Tests de integración cache hit/miss + TTL
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 6.5
+- **Criterio de aceptación:** suite cubre hit, miss, expiración por TTL, colisión de forma canónica entre idiomas distintos, y flag off = cero interacción con KV.
+- **Jira ID:** —
+
+#### 6.7 Auditoría de re-ataque en runtime (envenenamiento de cache)
+
+- **Agente:** Opus 5 _(no Fable: framing adversarial dispara safeguards; encuadre "verificación de seguridad de mi propio sistema, en sandbox, autorizada")_
+- **Estimado:** 1h
+- **Depende de:** 6.6
+- **Criterio de aceptación:** verificado que un usuario no puede envenenar el cache para otros (inyección vía query, colisiones de key forzadas, respuestas de baja confianza cacheadas); hallazgos y mitigaciones en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 6.8 Verificación en sandbox con corpus del discovery
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 6.6
+- **Criterio de aceptación:** las 30 queries del corpus discovery corridas contra dev: fraseos equivalentes producen cache hit, latencia de hit sensiblemente menor a p50 del path completo (baseline medido: ver README), idioma preservado en el 100% de los hits.
+- **Jira ID:** —
+
+#### 6.9 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 6.7, 6.8
+- **Criterio de aceptación:** diff completo del PR auditado contra spec 6.1/6.3 y Constitution; cero críticos abiertos; hallazgos registrados en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 6.10 Sync a Confluence + cierre
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 6.9
+- **Criterio de aceptación:** docs de features reflejados en Confluence bajo el árbol del Plan técnico; worklog derivado de bitácora registrado en Jira; Historia POL-6 transicionada a Listo.
+- **Jira ID:** —
+
+**Total estimado POL-6: ~9.75h** (10 subtareas; el par docs-first + auditorías suma ~3.25h sobre las ~6.5h de implementación pura — ese es el costo del método y se mide en la bitácora).
 
 ## POL-7 — Retrieval híbrido BM25 + dense + RRF
 
