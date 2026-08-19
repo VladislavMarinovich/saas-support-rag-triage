@@ -40,9 +40,9 @@ El sistema tiene una capa de runtime, una capa de storage caliente, una capa de 
 **Coherencia del diseño.** Cloudflare para runtime y storage caliente, Google Cloud para inferencia y storage analítico, Grafana Labs para dashboards. Tres proveedores, cada uno para lo que hace mejor. La Constitution (Principio I) no exige un único cloud absoluto; exige coherencia y no fragmentación gratuita. Este diseño la cumple.
 
 
-## 3. Schema BigQuery draft
+## 3. Schema BigQuery
 
-El schema de la tabla `polaris_prod_events` en `polaris-triage-demo.polaris_prod_events.events` se declara aquí como **draft**. El schema definitivo se congela al cerrar la Fase 0.b (discovery observacional del flow actual), documentada en `specs/001-polaris-v2/discovery/bq-schema.md`. Los campos listados abajo son la hipótesis actual derivada de las preguntas de negocio establecidas en la Spec y de la conversación técnica al planear v2.
+El schema de la tabla `polaris_prod_events` en `polaris-triage-demo.polaris_prod_events.events` se declara aquí **refinado con datos empíricos** de la Fase 0.b (discovery observacional ejecutado 2026-08-19). Los ajustes concretos derivados del discovery — renombrado de `kb_section` a `top1_source` + `top1_heading`, cambio de `grounded_answer` boolean a `answer_type` enum, umbral empírico de `top1_score < 0.50` para "confianza baja", y campos de intent como nullable — están documentados en `specs/001-polaris-v2/discovery/findings.md`. Los traces base están en `traces.jsonl` (180 eventos XES-lite sobre 30 casos). Este schema es la fuente para el DDL de BigQuery al arrancar la Fase 0.e.
 
 Cada campo se agrupa por bloque lógico. Las preguntas de negocio que cada bloque responde están indicadas para trazabilidad.
 
@@ -70,33 +70,41 @@ Cada campo se agrupa por bloque lógico. Las preguntas de negocio que cada bloqu
 
 **Clasificación e intent — ¿qué tipo de pregunta era?**
 
+Los campos de intent viven en el schema desde v1 pero se llenan solo cuando POL-6 (canonicalize + clasificación explícita) se active. En v1 y en el discovery no se producen — el LLM clasifica implícito y no expone score. **Nullable en la etapa v1** para evitar falsa señal.
+
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `intent_predicted` | STRING | Intent inferido por el clasificador. |
-| `intent_confidence` | FLOAT64 | Score/probabilidad del intent predicho. |
+| `intent_predicted` | STRING (nullable) | Intent inferido por el clasificador. Null hasta activación de POL-6. |
+| `intent_confidence` | FLOAT64 (nullable) | Score/probabilidad del intent predicho. Null hasta activación de POL-6. |
 
 **Routing — ¿a dónde fue esa pregunta?**
 
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `route` | STRING | Enum: `kb_grounded`, `escalate_human`, `canned_fallback`. |
-| `kb_section` | STRING | Sección/tema principal del artículo KB usado. Nullable si `route != kb_grounded`. |
+| `top1_source` | STRING | Nombre del archivo `.md` de la KB del chunk top-1 (ej. `connectors-connect-ga4`). Discriminador real observado en discovery. Nullable si `route != kb_grounded`. |
+| `top1_heading` | STRING | Heading H2 del chunk top-1 (ej. `Steps`). Complementa `top1_source` para debugging visual. Nullable si `route != kb_grounded`. |
 
 **Retrieval — ¿qué se recuperó y qué tan seguros estamos?**
 
+Los rangos de referencia empíricos observados en el discovery son: queries típicas 0.65–0.90, queries fuera de dominio < 0.50. **Umbral operativo: `top1_score < 0.50` marca "confianza baja"** y es candidato natural para trigger de "no sé" honesto o clarificación multi-turn (v2.1).
+
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `top1_score` | FLOAT64 | Score RRF del chunk top-1. |
+| `top1_score` | FLOAT64 | Score RRF del chunk top-1. Umbral empírico de confianza baja: < 0.50. |
 | `top5_avg_score` | FLOAT64 | Promedio de scores RRF de los top-5. |
 | `top3_chunk_ids` | STRING (repeated) | IDs de los 3 chunks más relevantes. |
 
 **Generación — ¿respondió con evidencia o dijo "no sé"?**
 
+El discovery invalidó el enfoque boolean original: una heurística binaria `grounded/no_grounded` falló en 1/30 casos por matices reales. Se cambia a enum de tres estados que refleja el comportamiento observado.
+
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `grounded_answer` | BOOL | `true` si citó al menos un chunk, `false` si respondió "no sé" honesto. |
-| `response_lang` | STRING | ISO 639-1 del idioma de la respuesta generada. |
+| `answer_type` | STRING | Enum: `grounded` (respuesta con evidencia citada), `no_evidence` (LLM dijo "no tengo información"), `refused_out_of_domain` (LLM rechazó por estar fuera del alcance del producto). |
+| `response_lang` | STRING | ISO 639-1 del idioma de la respuesta generada. **Ojo con el bug empírico descubierto**: en v1, el LLM cambia a inglés cuando dice "no sé" incluso si el query estaba en español. POL-9 lo resuelve con instrucción explícita en el prompt. |
 | `response_length_tokens` | INT64 | Tokens de la respuesta al usuario. |
+| `response_length_chars` | INT64 | Caracteres de la respuesta al usuario. Útil para BI que trabaja con chars. |
 
 **Costo — ¿cuánto costó este request y cuánto habría costado sin cache?**
 
@@ -127,9 +135,29 @@ Cada campo se agrupa por bloque lógico. Las preguntas de negocio que cada bloqu
 | `path_taken` | STRING | Enum: `full`, `bm25_only`, `canned_fallback`. Registra degradación elegante (Principio IX). |
 | `error_stage` | STRING | Nullable. Si hubo error, indica en qué etapa: `embed`, `retrieval`, `gen`, `bq_sink`. |
 
-**Total:** 26 campos. Volumen esperado en demo: < 1 MB/día. Almacenamiento en BQ trivial (~$0.02/mes).
+**Total:** 27 campos. Volumen esperado en demo: < 1 MB/día. Almacenamiento en BQ trivial (~$0.02/mes).
 
 **Lo que deliberadamente NO se guarda.** No se persiste el texto crudo de la query ni de la respuesta (PII potencial). No se guardan las listas completas de chunks recuperados (cardinalidad explosiva). No se guardan tokens individuales del LLM (nivel de granularidad no accionable). Estas exclusiones se documentan aquí para que ningún colaborador futuro las agregue "por si acaso" y contamine el schema.
+
+### Métricas derivadas — computables sobre `events`
+
+Dos métricas nuevas descubiertas empíricamente en la Fase 0.b viven a nivel de dashboard (no como columnas del evento). Se calculan con SQL agregado sobre `events` y se exponen como widgets:
+
+| Métrica derivada | Cómo se calcula | Para qué |
+|---|---|---|
+| **`kb_coverage_pct`** | `count(distinct top1_source \|\| '::' \|\| top1_heading) / total_chunks_kb` sobre ventana móvil 7 días. | Detecta chunks huérfanos. El discovery mostró 13/52 chunks (25%) sin apariciones en top-3 sobre 30 queries — advertencia para POL-11 antes de expandir. |
+| **`chunk_dominance_top1_ratio`** | Porcentaje de requests donde el chunk `top1_source::top1_heading` más frecuente aparece como top-1 sobre ventana móvil 7 días. | Detecta chunks imán. El discovery identificó `dashboards-not-loading::1.-check-your-internet-connection` como top-1 en 4/30 queries (13%) — sesgo hacia respuestas genéricas. |
+
+Estas métricas alimentan las secciones de vigilancia de ADR-0004 (BM25) y ADR-0005 (RRF).
+
+### Referencia empírica
+
+Los ajustes de este schema derivan del discovery ejecutado el 2026-08-19. Fuentes:
+
+- Findings agregados: [`discovery/findings.md`](discovery/findings.md).
+- Traces XES-lite: [`discovery/traces.jsonl`](discovery/traces.jsonl) (180 eventos).
+- Resumen ejecutivo: [`discovery/summary.md`](discovery/summary.md).
+- Script reproducible: [`../../scripts/discovery/observe_flow.py`](../../scripts/discovery/observe_flow.py).
 
 
 ## 4. Fases de ejecución
