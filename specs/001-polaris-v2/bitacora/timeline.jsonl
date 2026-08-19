@@ -1,0 +1,12 @@
+{"jira_id":"POL-2","event":"commit_first","ts":"2026-08-18T12:17:18-05:00","commit_sha":"dbd04b3","source":"backfill"}
+{"jira_id":"POL-2","event":"commit_last","ts":"2026-08-18T12:23:30-05:00","commit_sha":"ee602df","source":"backfill"}
+{"jira_id":"POL-2","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
+{"jira_id":"POL-3","event":"commit_first","ts":"2026-08-18T15:52:35-05:00","commit_sha":"d53b219","source":"backfill"}
+{"jira_id":"POL-3","event":"commit_last","ts":"2026-08-18T17:00:02-05:00","commit_sha":"f8e67a6","source":"backfill"}
+{"jira_id":"POL-3","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
+{"jira_id":"POL-4","event":"commit_first","ts":"2026-08-18T18:00:22-05:00","commit_sha":"08aeff7","source":"backfill"}
+{"jira_id":"POL-4","event":"commit_last","ts":"2026-08-19T08:21:16-05:00","commit_sha":"be913e4","source":"backfill"}
+{"jira_id":"POL-4","event":"worklog_total","duracion_min":330,"source":"backfill_jira"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-19T13:57:39-05:00","commit_sha":"64792e6","agente":"watson-fable5","nota":"esqueleto tasks.md","source":"backfill"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-19T13:58:46-05:00","commit_sha":"77ba577","agente":"watson-fable5","nota":"retrospectiva POL-2/3/4 + discovery","source":"backfill"}
+{"jira_id":"POL-5","event":"start","ts":"2026-08-19T18:47:26-05:00","agente":"watson-fable5","nota":"segmento vivo: convencion v2 (docs-first, jira a medida, agente por subtarea, bitacora, worklog automatico) + POL-6 a POL-11"}
