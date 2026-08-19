@@ -12,10 +12,33 @@ Los ajustes de scope derivados empíricamente del discovery están explícitamen
 
 ## Convención
 
+Campos por subtarea:
+
+- **Agente:** modelo asignado para ejecutar la subtarea (ver mapa abajo). Asignación explícita para eliminar el margen de error de "modelo incorrecto en fase de criterio" — causa raíz documentada de fallos previos.
 - **Estimado:** horas de trabajo enfocado del ejecutor (no calendario).
 - **Depende de:** lista de subtareas que deben cerrar antes de arrancar esta.
 - **Criterio de aceptación:** condición binaria que dispara el checkbox de "hecho".
-- **Jira ID:** placeholder hasta que se creen las subtasks (se completa en Actuar).
+- **Jira ID:** se completa al crear la subtask en Jira.
+
+Reglas de método:
+
+- **Docs-first.** Toda subtarea de código va precedida por su subtarea de documentación (spec de la feature, casos edge, decisiones). Nunca se codea sin doc previa. Si un ejecutor detecta que va a codear sin doc, se detiene y documenta primero.
+- **Jira a medida.** Las subtasks de Jira NO se crean todas al inicio: se crean progresivamente, al momento de arrancar cada una. Jira es el tablero visual y bitácora redundante; este archivo es la fuente de verdad del detalle.
+- **Confluence sync como subtarea explícita.** Cada Historia cierra con una subtarea de sync a Confluence (los commits viven en Git; la documentación operativa se refleja en Confluence).
+- **Bitácora obligatoria.** Cada subtarea registra en [`bitacora/timeline.jsonl`](bitacora/timeline.jsonl) tres eventos con timestamp ISO 8601: `start` (al arrancar), `end` (al terminar, con `duracion_min`), `commit` (con `commit_sha`, tomado de `git log --format=%aI`). Cada evento incluye el campo `agente`. Los hallazgos, desvíos y decisiones van en [`bitacora/hallazgos.md`](bitacora/hallazgos.md) antes del commit. Formato XES-lite compatible con minería de procesos: el objetivo es poder responder después dónde se atasca la ejecución, qué subtareas explotan en scope y cuál es el lead time real vs. estimado.
+- **Worklog automático.** El worklog de Jira ya no se estima a mano: se deriva de la bitácora (`hora_fin − hora_inicio` por subtarea, redondeado al minuto) y se registra en la subtask al cerrarla.
+
+### Mapa de agentes
+
+| Agente | Rol en v2 |
+|---|---|
+| **Watson (Fable 5)** | Criterio: specs de subtareas docs-first, criterios de aceptación, decisiones de diseño, auditoría de spec/docs/PR antes de cada merge. |
+| **Opus 5** | Implementación: código del Worker, tests, schemas/DDL BigQuery, dashboards Grafana, verificación en sandbox, y auditoría de re-ataque en runtime (Fable frena por safeguards en framing adversarial; encuadre correcto: "verificación de seguridad de mi propio sistema, en sandbox, autorizada", derivando de la spec qué debería pasar). |
+| **Sonnet 5** | Mecánico: formatting, feature flag wiring, renames, sync a Confluence, commits/push. |
+
+Haiku queda excluido del proyecto (retirado el 21-jul por fallos de comprensión en tareas de criterio; ratificado el 19-ago).
+
+La auditoría Fable de spec/docs/PR corre **por Historia** (antes de cada merge, no solo al final de v2): un crítico cazado en POL-6 cuesta un orden de magnitud menos que cazado en POL-11.
 
 ## Retrospectiva — Trabajo ya ejecutado (POL-2, POL-3, POL-4, Discovery)
 
