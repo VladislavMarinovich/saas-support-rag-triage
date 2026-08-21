@@ -20,10 +20,13 @@ from src.eval.kb_index import load_kb_chunks
 CORPUS_PATH = Path(__file__).resolve().parent / "corpus" / "corpus.jsonl"
 
 CAMPOS = ["id", "query", "lang", "categoria", "expected_chunks", "expected_answer_type", "source", "post_baseline"]
-CATEGORIAS = {"tipica", "typo_jerga", "fuera_de_dominio", "ambigua"}
+CATEGORIAS = {"tipica", "typo_jerga", "fuera_de_dominio", "ambigua", "staff_only"}
 ANSWER_TYPES = {"grounded", "no_evidence", "refused_out_of_domain"}
-SOURCES = {"discovery", "pol9", "manual"}
+SOURCES = {"discovery", "pol9", "manual", "pol11"}
 LANGS = {"es", "en"}
+# staff_only (kb-expansion.md §5): "no sé" y "esto lo ve un humano" son resultados
+# distintos, así que esas queries declaran además la ruta esperada.
+ROUTES = {"escalate_human"}
 
 
 def validar(corpus_path: Path = CORPUS_PATH) -> list[str]:
@@ -57,6 +60,11 @@ def validar(corpus_path: Path = CORPUS_PATH) -> list[str]:
         # coherencia: quien espera grounded debe tener al menos un chunk etiquetado
         if f.get("expected_answer_type") == "grounded" and not f.get("expected_chunks"):
             errores.append(f"{qid}: grounded sin expected_chunks")
+        # staff_only ⇄ expected_route: la categoría exige la ruta y la ruta exige la categoría
+        if f.get("categoria") == "staff_only" and f.get("expected_route") not in ROUTES:
+            errores.append(f"{qid}: staff_only sin expected_route válido ({f.get('expected_route')!r})")
+        if f.get("expected_route") and f.get("categoria") != "staff_only":
+            errores.append(f"{qid}: expected_route solo aplica a categoria staff_only")
         for cid in f.get("expected_chunks", []):
             if cid not in kb_ids:
                 errores.append(f"{qid}: expected_chunk inexistente en la KB: {cid}")

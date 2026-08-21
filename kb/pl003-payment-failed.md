@@ -4,7 +4,7 @@ Polaris shows PL003 when a scheduled charge for your plan is declined. Your work
 
 ## What PL003 affects and what keeps working
 
-During the grace period, dashboards, connectors, alerts, and scheduled reports all continue as normal — PL003 is a billing state, not a service cut. What it does block is anything that changes your plan: adding connections beyond your current allowance, or moving up a plan, until the balance clears.
+**Will Polaris stop working after a declined card?** Not immediately, and not without warning. During the grace period, dashboards, connectors, alerts, and scheduled reports all continue as normal — PL003 is a billing state, not a service cut, so you do not lose access or data while you sort the payment out. What it does block is anything that changes your plan: adding connections beyond your current allowance, or moving up a plan, until the balance clears.
 
 Only **Admins** see the PL003 banner, since only they can act on billing.
 

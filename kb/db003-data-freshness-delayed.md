@@ -4,7 +4,7 @@ Polaris shows DB003 when the data behind a dashboard is older than your sync sch
 
 ## How to read the DB003 warning
 
-DB003 compares the last successful sync against your expected cadence — hourly or daily, depending on your plan. It appears when that gap grows, and it names the source that is behind rather than the widget.
+If the numbers on your dashboard look old — yesterday's figures, or two days out of date — DB003 is the code that explains it. DB003 compares the last successful sync against your expected cadence — hourly or daily, depending on your plan. It appears when that gap grows, and it names the source that is behind rather than the widget.
 
 Data shown under DB003 is accurate as of the timestamp on the dashboard; it is simply not current. Nothing is lost, and no action is needed if the source recovers on its next cycle.
 

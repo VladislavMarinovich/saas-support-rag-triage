@@ -1,10 +1,10 @@
 # DB005 — Dashboard exceeds widget limit
 
-Polaris shows DB005 when you add a widget to a dashboard that already holds as many as one dashboard can render reliably.
+Polaris shows DB005 when you add a widget to a dashboard that already holds as many as one dashboard can render reliably — this is why **Add Card** stops working on a crowded dashboard.
 
 ## Why dashboards have a widget ceiling
 
-Each widget is its own query against a source. Past a certain count, a dashboard becomes slow enough to hit load failures (DB001) and to time out the reports built on it (RP003). DB005 stops that before it happens.
+Widgets are the cards on a dashboard, and each card is its own query against a source. Past a certain count, a dashboard becomes slow enough to hit load failures (DB001) and to time out the reports built on it (RP003). DB005 stops that before it happens.
 
 The new widget is not saved while DB005 is open; the existing layout is untouched.
 

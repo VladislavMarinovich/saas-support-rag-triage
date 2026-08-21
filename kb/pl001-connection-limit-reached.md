@@ -4,7 +4,7 @@ Polaris shows PL001 when you add a data source but your workspace already uses e
 
 ## How PL001 differs from a connector your plan excludes
 
-PL001 counts **connections**, not connector types. Two Google Ads accounts are two connections even though they use one connector.
+PL001 counts **connections**, not connector types. This is what people hit when they try to **add a second Google Ads account**, another Meta Ads ad account, or an extra Google Analytics property: Polaris will not let you add another account of a connector you already use, because two Google Ads accounts are two connections even though they use one connector.
 
 That distinction matters:
 
