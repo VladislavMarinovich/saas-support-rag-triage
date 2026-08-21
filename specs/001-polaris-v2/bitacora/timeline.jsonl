@@ -27,3 +27,4 @@
 {"jira_id":"POL-10","subtarea":"10.1","event":"start","ts":"2026-08-21T13:45:30-05:00","agente":"watson-fable5","nota":"spec del eval framework (docs-first); subtask Jira pendiente por WAF Atlassian"}
 {"jira_id":"POL-10","subtarea":"10.1","event":"commit","ts":"2026-08-21T13:46:37-05:00","commit_sha":"ba3e468","agente":"watson-fable5","nota":"spec eval framework"}
 {"jira_id":"POL-10","subtarea":"10.1","event":"end","ts":"2026-08-21T13:46:37-05:00","agente":"watson-fable5","duracion_min":9,"nota":"spec escrito y committeado; falta review de Vlad antes del PR de 10.A completo"}
+{"jira_id":"POL-10","subtarea":"10.2","event":"start","ts":"2026-08-21T14:08:45-05:00","agente":"ejecutor-fable5","nota":"corpus etiquetado: semilla 30 queries discovery + expansión; etiquetado manual contra KB 52 chunks (ids source::heading del chunker discovery)"}
