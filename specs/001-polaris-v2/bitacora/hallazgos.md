@@ -138,3 +138,45 @@
 **6. Deuda respetada, no tocada: el guard `post_baseline` del runner.** `cargar_corpus()` aborta con las 55 queries nuevas (`post_baseline:true`), tal como está declarado en kb-expansion.md §5 y en la auditoría 10.5. La verificación de la regla 12 se hizo con un script exploratorio que lee el JSONL directo, sin modificar el runner. **Sigue siendo prerrequisito de 11.5**, y ahora es bloqueante de hecho: el eval no corre de punta a punta hasta que la sección aparte de `post_baseline` esté implementada.
 
 **7. Sin números de límites inventados.** El producto define los planes por "número de conexiones" pero deja el número sin definir (`polaris-producto.md`: "pocas (definir nº en 11.2)"), y 11.2 no lo fijó. Los artículos de PL001/PL005/PF004 siguen el estilo de la KB vigente —`billing-plans.md` dice "up to a limited number of connectors" sin cifras— y remiten a **Settings > Billing** para el valor real. Inventar cifras habría creado producto durante la redacción, que es exactamente lo que el §8 de kb-expansion prohíbe.
+
+## [2026-08-21] POL-11 (11.3) — Revisión Watson: aprobado el contenido, DOS bloqueos para 11.5
+
+**Verificado midiendo, no leyendo** (corrida propia sobre el índice y el corpus nuevos, gasto incremental USD 0.00000 — cache caliente):
+
+- **Composición exacta al spec:** 55 artículos nuevos (ER 10 · PF 6 · PL 5 · RP 6 · AL 4 · DB 5 · AG 4 = 40 códigos + 15 módulos), 75 totales. Índice del eval: 52 → **168 chunks**.
+- **La trampa del chunker es real y la reproduje:** con `still stuck?` en el cuerpo, un artículo de prueba indexa 1 de 2 secciones; sin la frase, 2 de 2. El hallazgo #1 del ejecutor evitó perder los 40 bloques "How to fix". **Regla 9 del checklist reformulada** (prohibir la frase, no el heading) — corrección aplicada en kb-audit §4.
+- **La prueba medible de la expansión FUNCIONA:** `ec-01`, `ec-02`, `ec-03` pasan de `no_evidence` a Recall@1 = 1 y MRR = 1.00, top-1 en su artículo de código. Era el criterio de aceptación estrella de 11.2.
+- **Cero imanes nuevos:** dominancia top-1 máxima 3.9% (umbral 10%). El imán histórico bajó de 8.5% a 3.9% — la expansión lo diluyó, no lo creó.
+- **Ningún artículo nuevo nace huérfano** por sus propias queries (Recall@5 = 1.00 en las 55 nuevas). Rule 12 cumplida.
+- **Calidad real, no relleno:** spot-check de `er005` y `escalate-billing-disputes` — referencias cruzadas coherentes (PL003, AG004), distinciones finas (pago *declinado* self-service vs *disputado* a staff), coherencia de producto (Google Ads en todos los planes ⇒ ER005 nunca es por plan).
+
+### BLOQUEO 1 — La no-regresión FALLA sobre las 37 queries originales (no reportado por el ejecutor)
+
+| Métrica | Baseline v1 | Con KB expandida | Δ |
+|---|---|---|---|
+| Recall@1 | 0.70 | **0.68** | −0.02 |
+| Recall@5 | 0.92 | **0.86** | **−0.06** |
+| MRR | 0.80 | **0.76** | −0.04 |
+
+Viola eval.md §7 y el criterio de aceptación de kb-expansion.md §7. **Dos queries perdieron el top-5** que antes tenían:
+
+- `man-10` («necesito rotar el token oauth de google ads»): esperaba `connectors-reauthorize-expired::how-to-reconnect`; ahora top-1 es `er005-not-synced-google-ads::how-to-fix-er005-in-google-ads`.
+- `typo-05` («dashboards no cargan tras cambio plan»): esperaba `billing-change-plan::downgrading`; ahora entran chunks de `dashboards-not-loading` y `db001`.
+
+**Diagnóstico: es principalmente deuda de etiquetado, no degradación real.** El chunk que ahora gana en `man-10` explica cómo reconectar Google Ads — es una respuesta legítima que la etiqueta vieja no contempla. `eval.md` §2 ya lo había previsto: *"Cuando POL-11 expanda la KB, las etiquetas se REVISAN (un chunk nuevo puede volverse la mejor respuesta) y el cambio queda en el PR de POL-11"*. El ejecutor re-etiquetó `ec-01/02/03` pero **no revisó las etiquetas preexistentes**, que era parte del contrato.
+
+**Guardarraíl contra el razonamiento circular:** revisar etiquetas NO es ajustarlas hasta que los números mejoren. Cada cambio exige justificar por escrito **por qué el chunk nuevo responde la pregunta**, chunk por chunk, y las que sigan siendo fallas reales (los 3 casos de término exacto: `typo-03`, `typo-04`, `amb-02`) se dejan fallando — son la apuesta de BM25/POL-7 y su valor está en fallar hoy.
+
+### BLOQUEO 2 — Cobertura orgánica 94.0% (spec exige ≥ 96%)
+
+10 huérfanos, y el patrón importa: **6 son chunks NUEVOS, y son la mitad accionable de su artículo** — `pl001::how-to-free-a-connection…`, `db003::how-to-clear-db003`, `db005::how-to-work-around-db005`, `pf005` (ambos chunks), `pf006::what-pf006-means…`. En varios casos el bloque explicativo ("qué significa X") sí se recupera y el bloque de solución ("cómo arreglar X") no. El usuario recibiría el diagnóstico sin el remedio.
+
+Hipótesis (a verificar en 11.5): las queries nuevas están escritas como *síntoma* ("los números se ven viejos") y recuperan el bloque explicativo; falta la variante de *intención de arreglo* ("cómo arreglo que los datos estén atrasados"). Es exactamente lo que el ejecutor corrigió en 5 artículos por brecha de vocabulario, aplicado ahora al segundo chunk.
+
+### Resto
+
+- **Guard `post_baseline` confirmado como bloqueante de hecho:** el runner aborta con las 55 queries nuevas; la deuda menor #1 de la auditoría 10.5 es ahora prerrequisito duro de 11.5.
+- **Desvío justificado del ejecutor:** no inventó cifras de límites de plan (el producto no los define y 11.2 no los fijó); los artículos remiten a Settings > Billing siguiendo `billing-plans.md`. Correcto — inventar cifras habría creado contradicciones con POL-8.
+- **Aviso del ejecutor validado:** 3 "fallas" de la regla 12 eran de su propio etiquetado automático, no de los artículos. Refuerza el Bloqueo 1: el etiquetado es el punto débil de esta Historia.
+
+**Veredicto:** el contenido de 11.3 se aprueba y no se reescribe. Los dos bloqueos son de **instrumento** (etiquetas + queries), y se resuelven en 11.5 ANTES de re-estampar el baseline. La auditoría formal (11.6) la hace el chat auditor independiente sobre el PR completo.

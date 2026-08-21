@@ -123,7 +123,7 @@ Reglas derivadas de la evidencia de §2, para que los artículos nuevos —inclu
 
 7. **Ningún chunk debe poder responder "cualquier problema".** El imán actual dice "check your internet connection… this might not be the issue" — texto que cuela en "help" y "no me funciona". Cada chunk debe declarar *para qué síntoma concreto* sirve, en su primera oración.
 8. **Separar troubleshooting genérico de específico en artículos distintos**, para que el genérico no compita con todo.
-9. **Sin footers boilerplate como sección propia.** Nunca un `## Still stuck?`: en el índice del eval eso produjo 2 chunks que solo dicen "contact support" y contaminan el 23 % de las queries. El cierre de soporte va como texto de cierre, no como heading.
+9. **Sin la frase `still stuck?` en NINGUNA parte del artículo** — ni como heading ni dentro del cuerpo. *(Regla reformulada en la revisión de 11.3, 21-ago: la versión original solo prohibía el heading, y eso era insuficiente. El chunker del eval filtra por **cuerpo**: descarta entera cualquier sección que contenga la frase. Con el cierre de soporte habitual de la KB, el último bloque de los 55 artículos nuevos —los "How to fix", justo los que resuelven— habría desaparecido del índice. Verificado empíricamente por Watson con un artículo de prueba: con la frase se indexa 1 de 2 secciones; sin ella, 2 de 2.)* Usar un cierre alternativo ("If the error persists, contact support…"). Además: nunca un heading `## Still stuck?` — eso produjo los 2 chunks basura de §3.
 
 **Verificación (obligatoria antes de cerrar 11.3)**
 
