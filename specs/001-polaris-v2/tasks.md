@@ -589,7 +589,71 @@ Comportamiento observable: cada PR de v2 adjunta la salida del eval con delta co
 
 ## POL-11 — KB expansion
 
-_A completar en commit siguiente._
+La KB crece de 20 artículos (52 chunks) a 60-100 artículos manteniendo la estructura de chunking validada (H2 self-contained, boilerplate strippeado, sin overlap — decisión cerrada, no se toca en v2). Comportamiento observable: preguntas antes fuera de cobertura ahora tienen respuesta grounded, y las métricas de retrieval no degradan por dilución.
+
+**Referencias:** Spec §3 (Expansión de KB) y §4 (criterio de no-dilución), Plan §4 Fase 2, Discovery hallazgo #2 (chunks huérfanos), métrica de vigilancia `kb_coverage_pct` (ADR-0004).
+
+**[Ajuste post-discovery]** El discovery mostró que **13 de los 52 chunks actuales (25%) jamás aparecen en el top-3** del corpus — planes de precios, seguridad, reconexión de connectors. Expandir sin diagnosticar amplifica el problema: si la KB de hoy es 25% invisible, una de 100 docs construida con los mismos patrones puede ser peor. Por eso la subtarea 11.1 (auditoría de huérfanos) va **ANTES** de redactar un solo artículo nuevo — es el bloqueo blando que el propio discovery recomendó.
+
+**Nota de secuencia:** en el orden del Plan (Fase 2), POL-11 corre antes que el híbrido (POL-7, Fase 5). El re-índice de esta Historia es **solo denso**; el índice BM25 se construye en POL-7 sobre la KB que esté vigente en ese momento.
+
+#### 11.1 [Ajuste post-discovery] Auditoría de los 13 chunks huérfanos ANTES de expandir
+
+- **Agente:** Opus 5
+- **Estimado:** 1.5h
+- **Depende de:** 10.4 (baseline v1 publicado — gate de Plan §4 Fase 1)
+- **Criterio de aceptación:** para cada uno de los 13 huérfanos, causa clasificada (sesgo del corpus de discovery / texto genérico que ninguna query natural activa / brecha de vocabulario usuario-chunk) con evidencia del eval; decisión por chunk: reescribir texto, aceptar y vigilar por `kb_coverage_pct`, o cubrir con query nueva en el corpus; **las lecciones se convierten en checklist de redacción para 11.2** (que los artículos nuevos no nazcan huérfanos). De paso se corrigen las cifras rancias 89→52 en `spec.md:13`, `docs/adr/0001-retrieval-without-a-dedicated-vector-db.md`, `docs/mapa-matematicas-polaris.md` y `docs/BITACORA.md` (hallazgo #4 del 21-ago). Todo en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 11.2 Documentar spec de la expansión
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 45 min
+- **Depende de:** 11.1
+- **Criterio de aceptación:** `docs/features/kb-expansion.md` define: criterios de selección de temas nuevos (gaps de cobertura detectados por el eval + temas huérfanos a reforzar), el checklist anti-huérfano derivado de 11.1 (vocabulario del usuario en el texto, especificidad suficiente para no crear nuevos chunks imán), el target de tamaño (60-100 docs) y la regla de estructura intocable (H2 self-contained, mismo modelo de embeddings — Spec §5).
+- **Jira ID:** —
+
+#### 11.3 Redactar artículos nuevos de la KB
+
+- **Agente:** Sonnet 5
+- **Estimado:** 3h
+- **Depende de:** 11.2
+- **Criterio de aceptación:** 40-80 artículos nuevos en `kb/` cumpliendo el checklist de 11.2; cada artículo pasa el filtro de estructura (H2 self-contained, sin boilerplate); temas trazables a los criterios de selección de 11.2, no relleno genérico.
+- **Jira ID:** —
+
+#### 11.4 Re-chunk + re-embed + actualizar índice denso
+
+- **Agente:** Sonnet 5
+- **Estimado:** 1h
+- **Depende de:** 11.3
+- **Criterio de aceptación:** pipeline existente (`src/chunk_kb` + embeddings `text-embedding-005`, mismo modelo — Spec §5) corrido sobre la KB completa; índice denso del Worker actualizado; conteo de chunks nuevo documentado; deploy a dev verificado sin activar flags v2.
+- **Jira ID:** —
+
+#### 11.5 Re-correr eval contra baseline (no-dilución)
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 11.4
+- **Criterio de aceptación:** eval framework corrido sobre la KB expandida: cobertura sube (queries antes fuera de dominio ahora grounded) y Recall@5/MRR no degradan significativamente en los casos donde v1 acertaba (criterio Spec §4); `kb_coverage_pct` recalculada sobre el corpus y comparada contra el 75% del baseline; resultados en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 11.6 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 11.5
+- **Criterio de aceptación:** diff auditado contra spec 11.2 y Spec §5 (verificar que NO se cambió modelo de embeddings ni estrategia de chunking — scope freeze); muestreo de artículos nuevos contra el checklist anti-huérfano; cero críticos abiertos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 11.7 Sync a Confluence + cierre
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 11.6
+- **Criterio de aceptación:** doc de expansión en Confluence; worklog derivado de bitácora; POL-11 transicionada a Listo.
+- **Jira ID:** —
+
+**Total estimado POL-11: ~8.5h** (7 subtareas; 1.5h son el ajuste post-discovery que evita expandir una KB 25% invisible).
 
 ## Resumen
 
