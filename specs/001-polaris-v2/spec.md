@@ -10,7 +10,7 @@ Este documento describe QUÉ hace Polaris v2 y por qué. No describe cómo — e
 
 ## 1. Contexto y problema
 
-Polaris v1 es un demo funcional de RAG grounded sobre KB de producto, corriendo en Cloudflare Workers con Vertex AI (embeddings `text-embedding-005` y generación `gemini-2.5-flash-lite`). Responde preguntas de soporte citando fuentes de la KB actual (20 artículos, 89 chunks estructurales por sección H2) y clasifica el ticket antes de generar respuesta.
+Polaris v1 es un demo funcional de RAG grounded sobre KB de producto, corriendo en Cloudflare Workers con Vertex AI (embeddings `text-embedding-005` y generación `gemini-2.5-flash-lite`). Responde preguntas de soporte citando fuentes de la KB actual (20 artículos, 90 chunks estructurales: intro + secciones H2) y clasifica el ticket antes de generar respuesta.
 
 Cuatro carencias limitan a v1 como flagship de portafolio y como producto real:
 
