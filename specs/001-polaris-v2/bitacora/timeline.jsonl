@@ -1,12 +1,12 @@
+{"jira_id":"POL-2","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
+{"jira_id":"POL-3","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
+{"jira_id":"POL-4","event":"worklog_total","duracion_min":330,"source":"backfill_jira"}
 {"jira_id":"POL-2","event":"commit_first","ts":"2026-08-18T12:17:18-05:00","commit_sha":"dbd04b3","source":"backfill"}
 {"jira_id":"POL-2","event":"commit_last","ts":"2026-08-18T12:23:30-05:00","commit_sha":"ee602df","source":"backfill"}
-{"jira_id":"POL-2","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
 {"jira_id":"POL-3","event":"commit_first","ts":"2026-08-18T15:52:35-05:00","commit_sha":"d53b219","source":"backfill"}
 {"jira_id":"POL-3","event":"commit_last","ts":"2026-08-18T17:00:02-05:00","commit_sha":"f8e67a6","source":"backfill"}
-{"jira_id":"POL-3","event":"worklog_total","duracion_min":240,"source":"backfill_jira"}
 {"jira_id":"POL-4","event":"commit_first","ts":"2026-08-18T18:00:22-05:00","commit_sha":"08aeff7","source":"backfill"}
 {"jira_id":"POL-4","event":"commit_last","ts":"2026-08-19T08:21:16-05:00","commit_sha":"be913e4","source":"backfill"}
-{"jira_id":"POL-4","event":"worklog_total","duracion_min":330,"source":"backfill_jira"}
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-19T13:57:39-05:00","commit_sha":"64792e6","agente":"watson-fable5","nota":"esqueleto tasks.md","source":"backfill"}
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-19T13:58:46-05:00","commit_sha":"77ba577","agente":"watson-fable5","nota":"retrospectiva POL-2/3/4 + discovery","source":"backfill"}
 {"jira_id":"POL-5","event":"start","ts":"2026-08-19T18:47:26-05:00","agente":"watson-fable5","nota":"segmento vivo: convencion v2 (docs-first, jira a medida, agente por subtarea, bitacora, worklog automatico) + POL-6 a POL-11"}
@@ -41,6 +41,10 @@
 {"jira_id":"POL-10","subtarea":"10.A","event":"commit","ts":"2026-08-21T16:24:10-05:00","commit_sha":"5892d60","agente":"ejecutor-fable5","nota":"PR #6 rebase-mergeado a main (14 commits, cero criticos en auditoria 10.5): ventana POL-10.A publicada — baseline.md en main, gate de POL-6/7/9/11 abierto; falta 10.6 (Confluence + worklog, Sonnet)"}
 {"jira_id":"POL-10","subtarea":"10.6","event":"start","ts":"2026-08-21T16:38:50-05:00","agente":"watson-fable5","nota":"sync Confluence (eval.md + baseline.md) + worklogs derivados + POL-10 a En curso con comentario del split"}
 {"jira_id":"POL-10","subtarea":"10.6","event":"end","ts":"2026-08-21T16:39:12-05:00","agente":"watson-fable5","duracion_min":6,"nota":"Confluence 1277954 (eval spec) + 1310721 (baseline) hijas del Plan tecnico; POL-10 En curso; 5 worklogs (85m) + comentario del split; ventana 10.A CERRADA"}
+{"jira_id":"POL-11","subtask_jira":"POL-12","subtarea":"11.1","event":"start","ts":"2026-08-21T16:42:51-05:00","agente":"ejecutor-opus5","nota":"auditoria de chunks huerfanos ANTES de expandir: inventario canonico via eval top-5, causas, decisiones, perdida por filtro still-stuck, checklist anti-huerfano, cifras 89->52"}
+{"jira_id":"POL-11","subtask_jira":"POL-12","subtarea":"11.1","event":"commit","ts":"2026-08-21T16:50:26-05:00","commit_sha":"255582d","agente":"ejecutor-opus5","nota":"kb-audit.md + src/eval/coverage.py + 5 hallazgos"}
+{"jira_id":"POL-11","subtask_jira":"POL-12","subtarea":"11.1","event":"commit","ts":"2026-08-21T16:50:26-05:00","commit_sha":"4709e74","agente":"ejecutor-opus5","nota":"cifras del indice de produccion 89->90 (desvio justificado del 89->52 pedido)"}
+{"jira_id":"POL-11","subtask_jira":"POL-12","subtarea":"11.1","event":"end","ts":"2026-08-21T16:50:26-05:00","agente":"ejecutor-opus5","duracion_min":41,"nota":"auditoria cerrada: bloqueo blando levantado (cobertura 96.2% organico, 2 huerfanos, 13 del discovery replicados y explicados); destapado indice degradado del eval (18 secciones perdidas + 2 chunks basura que contaminan 23% de queries) con saneamiento propuesto para 11.4; checklist anti-huerfano listo para 11.2"}
 {"jira_id":"POL-18","event":"start","ts":"2026-08-24T12:24:16-05:00","agente":"watson-opus5","nota":"gobernanza: ADR-0007 + constitucion v1.1.0 (orquestacion, fronteras, drift 2 cadencias) + tablero de rehidratacion + un escritor por archivo"}
 {"jira_id":"POL-18","event":"end","ts":"2026-08-24T12:26:50-05:00","agente":"watson-opus5","duracion_min":34,"nota":"ADR-0007 + constitucion v1.1.0 + tablero + registro-auditoria + propiedad de hallazgos; 4 commits pusheados; ESPERA FIRMA DE VLAD (frontera: merge a main)"}
 {"jira_id":"POL-18","event":"commit","ts":"2026-08-24T12:33:11-05:00","agente":"watson-opus5","nota":"PR #7 rebase-mergeado a main con firma de Vlad; constitucion v1.1.0 vigente"}
