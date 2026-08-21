@@ -63,3 +63,13 @@
 **2. `test_parity.py` (eval.md §4) diferido a POL-7 — imposible hoy.** La regla de paridad JS/Python exige que el scoring Python produzca el mismo ranking que el Worker; pero el Worker consulta `worker/kb_vectors.json` (90 chunks, ids `stem#i`) y el eval usa los 52 chunks `source::heading` del corpus (hallazgo #1 de 10.2). No hay paridad posible entre índices distintos. El criterio de aceptación de 10.3 en tasks.md no exige el test de paridad; eval.md ya lo ataba al "test espejo en el Worker cuando POL-7 implemente BM25/RRF". Queda explícito: POL-7 debe unificar el chunker ANTES de escribir `test_parity.py`, y las 5 queries doradas se eligen en ese momento.
 
 **3. Decisión de instrumento: la latencia reportada es solo el embed de la query.** El reporte congela las latencias de embed en el cache (primer run = latencias reales de Vertex; runs siguientes las reusan) y deja el cosine in-memory (~1-3 ms, discovery §1) en consola. Alternativa descartada: medir latencia viva en cada run — rompía el criterio de determinismo de 10.4 ("dos runs = números idénticos") por ruido de milisegundos sin valor informativo. El costo del corpus se deriva de tokens (determinista); el gasto incremental real del run va a consola.
+
+## [2026-08-21] POL-10 (10.4) — Hallazgos del baseline v1
+
+**Contexto:** ADC reautenticado por Vlad; eval corrido dos veces (reportes byte-idénticos ✔); baseline publicado en `specs/001-polaris-v2/baseline.md`. Costo real: USD 0.00015.
+
+**1. La apuesta de POL-7 queda cuantificada ANTES de implementarla.** Las únicas 3 queries que no llegan al contexto (Recall@5 = 0) son de término exacto (oauth, api key, TikTok Ads), y typo_jerga rinde Recall@1 0.29 vs 0.79 de las típicas. Si BM25+RRF no mueve ESTOS números, POL-7 no está funcionando — criterio de éxito concreto para la tabla v1 vs v2.
+
+**2. El umbral 0.50 del discovery generaliza a medias.** Con 10 casos sin chunk esperado (vs 4 del discovery): gatilla bien en lo claramente ajeno (6/10), pero los códigos de error inexistentes en la KB (ec-01 0.601, ec-03 0.676) y preguntas de producto sin artículo (man-13 0.690) puntúan ALTO — el denso encuentra vecinos plausibles y respondería con falsa confianza. Implicación: el "no sé" honesto de POL-9 no puede colgarse solo del score; y POL-11 (artículos de códigos) convierte estos 4 fallos en grounded medibles.
+
+**3. Fix menor de formato en el run:** `Costo/query` se imprimía con 6 decimales y $0.0000002 se redondeaba a $0.000000 (mentira visual). Corregido a 7 decimales antes de publicar el baseline.

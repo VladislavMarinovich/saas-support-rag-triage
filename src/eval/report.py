@@ -47,7 +47,7 @@ def render(config: dict, agregados: dict, fecha: str) -> str:
         f"| MRR | {_fmt(g['mrr'])} |",
         f"| p50 retrieval (ms) | {agregados['latencia_p50_ms']:.0f} |",
         f"| p95 retrieval (ms) | {agregados['latencia_p95_ms']:.0f} |",
-        f"| Costo/query | ${agregados['costo_por_query_usd']:.6f} |",
+        f"| Costo/query | ${agregados['costo_por_query_usd']:.7f} |",
         f"| answer_type match | {at['aciertos']}/{at['n']} |",
         "",
         f"Sobre {g['n']} queries con chunk esperado; las {at['n']} sin chunk esperado "
