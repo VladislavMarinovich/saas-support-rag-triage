@@ -4,7 +4,7 @@ Polaris shows AL004 when an alert has failed to deliver enough times in a row th
 
 ## Why an alert pauses itself
 
-AL004 always follows another problem — usually repeated AL002 delivery failures, or an alert whose metric disappeared (AL003). Pausing avoids a loop of failing notifications, which is what damages sending reputation and floods logs.
+If it looks like Polaris turned off your alert by itself, or disabled it automatically without anyone touching it, this is why. AL004 always follows another problem — usually repeated AL002 delivery failures, or an alert whose metric disappeared (AL003). Pausing avoids a loop of failing notifications, which is what damages sending reputation and floods logs.
 
 The alert definition and its history stay intact. Only evaluation and notification stop.
 
