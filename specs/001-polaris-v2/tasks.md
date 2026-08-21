@@ -481,9 +481,111 @@ Este bloque absorbe además la **Fase 6 del Plan (modo cliente)**: `spec.md` §3
 
 **Total estimado POL-9: ~8.5h** (11 subtareas; ~2.5h corresponden al sub-bloque de modo cliente absorbido de la Fase 6).
 
-## POL-10 — Eval framework + baseline
+## POL-10 — Eval framework + baseline (partido en A y B)
 
-_A completar en commit siguiente._
+Una sola Historia en Jira, **dos ventanas de ejecución** (decisión de Vlad 21-ago, hallazgo #2): el Plan §4 ya la partía implícitamente — "POL-10 (parcial)" en la Fase 1 y "POL-10 (completa)" en la Fase 8. **POL-10.A es el gate de todo v2**: ninguna Historia de implementación (POL-6/7/9/11) arranca hasta que el baseline v1 esté publicado, porque ninguna medición vale sin baseline (Principio XII). POL-10.B es la última pieza antes del cierre: la comparación v1 vs v2 que congela los targets cuantitativos que la Spec §4 dejó como TBD deliberado.
+
+Comportamiento observable: cada PR de v2 adjunta la salida del eval con delta contra baseline (un PR sin eval no se mergea), y las release notes de v2 traen la tabla comparativa final.
+
+**Referencias:** Spec §3 (Eval framework + baseline) y §4 (criterio + política de PR), Plan §4 Fases 1 y 8, Constitution Principio XII (eval-driven), Discovery (corpus semilla de 30 queries + traces).
+
+### POL-10.A — Framework + baseline v1 (Fase 1 — GATE)
+
+#### 10.1 Documentar spec del eval framework
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 45 min
+- **Depende de:** —
+- **Criterio de aceptación:** `docs/features/eval.md` define: métricas (Recall@1, Recall@5, Precision@5, MRR, latencia p50/p95, costo promedio), formato del corpus etiquetado (query + idioma + chunks esperados + tipo de respuesta esperada), cómo corre local sin depender del Worker vivo (Spec §4), y el formato del reporte de delta que se adjunta a cada PR.
+- **Jira ID:** —
+
+#### 10.2 Construir corpus etiquetado (30-50 queries)
+
+- **Agente:** Opus 5
+- **Estimado:** 1.5h
+- **Depende de:** 10.1
+- **Criterio de aceptación:** corpus en `src/eval/corpus/` con 30-50 queries multiidioma etiquetadas con chunks esperados; las 30 del discovery como semilla (ya tienen traces reales); cubre: típicas ES/EN, typos/jerga, fuera de dominio, ambiguas; el etiquetado de "chunk esperado" se hace contra la KB actual de 52 chunks, no contra la expandida.
+- **Jira ID:** —
+
+#### 10.3 Implementar el framework en src/eval/
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 10.1, 10.2
+- **Criterio de aceptación:** framework Python corre el corpus contra una configuración dada (v1 dense-only o v2 con flags) y reporta las métricas de 10.1; salida en formato tabla pegable en PR; reproducible con un solo comando documentado en el README del módulo.
+- **Jira ID:** —
+
+#### 10.4 Correr baseline v1 + publicar
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 10.3
+- **Criterio de aceptación:** `specs/001-polaris-v2/baseline.md` publica las métricas de v1 (dense-only, KB 52 chunks) sobre el corpus completo, con fecha, configuración exacta y costo del experimento; **este documento es el gate**: su existencia desbloquea 6.1, 7.1, 9.1 y 11.1.
+- **Jira ID:** —
+
+#### 10.5 Auditoría Fable del PR (framework + baseline)
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 10.4
+- **Criterio de aceptación:** diff auditado contra spec 10.1 y Principio XII; especial atención a métricas mal implementadas (un baseline con Recall mal calculado invalida TODAS las comparaciones posteriores de v2 — es el error más caro del proyecto); cero críticos abiertos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 10.6 Sync a Confluence + cierre parcial
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 10.5
+- **Criterio de aceptación:** doc del framework + baseline en Confluence; worklog derivado de bitácora; POL-10 queda **En curso** en Jira (no Listo — falta 10.B) con comentario explicando el split.
+- **Jira ID:** —
+
+**Subtotal POL-10.A: ~6.5h** (6 subtareas).
+
+### POL-10.B — Comparación final v1 vs v2 (Fase 8)
+
+#### 10.7 Correr eval sobre v2 completo + tabla comparativa
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** cierre de POL-6, POL-7, POL-8, POL-9 y POL-11
+- **Criterio de aceptación:** eval corrido sobre v2 con todos los flags on, sobre el mismo corpus del baseline (más los casos agregados en 9.8, marcados como post-baseline); tabla comparativa v1 vs v2 con delta por métrica; sin regresión en los casos donde v1 acertaba.
+- **Jira ID:** —
+
+#### 10.8 Congelar targets cuantitativos con justificación empírica
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 45 min
+- **Depende de:** 10.7
+- **Criterio de aceptación:** los TBD de Spec §4 quedan congelados con número y justificación de por qué ese umbral y no otro (compromiso explícito de la Spec); registrados en `spec.md` vía PR (bump de versión del spec) y reflejados en las release notes.
+- **Jira ID:** —
+
+#### 10.9 Release notes v2 con tabla comparativa
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 10.8
+- **Criterio de aceptación:** release notes públicas (EN — Principio XIII) con la tabla v1 vs v2, los targets congelados y links al dashboard; pegadas al release/tag de v2 en GitHub.
+- **Jira ID:** —
+
+#### 10.10 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 30 min
+- **Depende de:** 10.9
+- **Criterio de aceptación:** verificado que la tabla no sobreafirma (deltas reales, sin cherry-picking de métricas), que los targets tienen justificación y que las release notes no prometen lo que el dashboard no muestra; cero críticos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 10.11 Sync a Confluence + cierre POL-10
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 10.10
+- **Criterio de aceptación:** tabla y targets en Confluence; worklog derivado de bitácora; POL-10 transicionada a Listo.
+- **Jira ID:** —
+
+**Subtotal POL-10.B: ~3.25h** (5 subtareas).
+
+**Total estimado POL-10: ~9.75h** (11 subtareas en dos ventanas: A abre v2, B lo cierra).
 
 ## POL-11 — KB expansion
 
