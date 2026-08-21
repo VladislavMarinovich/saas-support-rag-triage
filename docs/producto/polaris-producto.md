@@ -14,7 +14,7 @@
 |---|---|---|
 | **Dashboards** | Construcción y visualización de métricas | `dashboards-build`, `dashboards-not-loading`, `northstar-define` |
 | **Conexiones (connectors)** | Integración con fuentes de datos | `connectors-*` (5 artículos) |
-| **Editor** | Edición de dashboards y reportes (asumido de "ediciones" — **confirmar con Vlad**) | — (nuevo en POL-11) |
+| **Editar** | Modificar dashboards + configurar frecuencia y destinatarios de los reportes automatizados (confirmado por Vlad 21-ago) | parcial: `reports-schedule`; edición de dashboards es nuevo en POL-11 |
 | **Reportes automatizados** | Programación y envío a destinos (email, Slack) | `reports-schedule`, `reports-not-arriving` |
 | **Alertas** | Umbrales sobre métricas → notificación | `alerts-create`, `alerts-not-firing` |
 | **Agente LLM (Agentic RAG)** | Asistente de soporte del producto | — (nuevo en POL-11) |
