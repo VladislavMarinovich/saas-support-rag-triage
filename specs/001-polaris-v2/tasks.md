@@ -277,7 +277,109 @@ Recuperación por dos vías en paralelo (índice denso existente + BM25 léxico 
 
 ## POL-8 — Telemetría estructurada + dashboard
 
-_A completar en commit siguiente._
+Cada request emite un evento con el schema de 27 campos (Plan §3, refinado empíricamente en el discovery) hacia BigQuery vía streaming insert con `waitUntil` (ADR-0002), y un dashboard **Grafana Cloud Free con Dashboard as Code** (ADR-0003) lo consume. Comportamiento observable: el evento aparece en la tabla BQ en menos de un minuto, el dashboard muestra costo/latencia/cache/idiomas/ahorro en tiempo casi real, y un fallo del logger jamás afecta la respuesta al usuario (Principio III).
+
+**Referencias:** Spec §3 (Telemetría + dashboard), Plan §3 (schema 27 campos + métricas derivadas) y §4 Fase 7, ADR-0002 (BQ streaming), ADR-0003 (Grafana + DaC), criterio de aceptación Spec §4.
+
+**[Ajuste de consistencia]** `spec.md` (POL-3) nombra Looker Studio en §3/§4/§6, pero ADR-0003 (POL-4, posterior) lo rechazó — "no versionable como código" — y decidió Grafana Cloud + DaC. `constitution.md` línea 35 arrastra la misma referencia. El ADR gana (decisión de Vlad, 21-ago, hallazgo #1 en `bitacora/hallazgos.md`); la subtarea 8.1 reconcilia los documentos para que ningún lector futuro implemente contra la herramienta rechazada.
+
+#### 8.1 [Ajuste de consistencia] Reconciliar spec.md y constitution.md con ADR-0003
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** —
+- **Criterio de aceptación:** las 3 menciones de Looker en `spec.md` (§3, §4, §6) reemplazadas por "dashboard de observabilidad (Grafana Cloud, ADR-0003)"; `constitution.md` línea 35 corregida con bump PATCH + Sync Impact Report actualizado según la convención del patrón Constitution; ambos cambios espejados a Confluence en el sync de cierre (8.12).
+- **Jira ID:** —
+
+#### 8.2 Documentar spec de telemetría
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 45 min
+- **Depende de:** 8.1
+- **Criterio de aceptación:** `docs/features/telemetry.md` congela el schema de 27 campos (copiado de Plan §3, no reinterpretado), documenta la semántica de `waitUntil` (el insert nunca bloquea la respuesta), el manejo de fallo del sink (`error_stage = bq_sink`, respuesta intacta), qué NO se persiste (texto crudo de query/respuesta, listas completas de chunks — con el porqué), y el kill-switch `TELEMETRY_ENABLED`.
+- **Jira ID:** —
+
+#### 8.3 Crear dataset + tabla BQ con DDL versionado
+
+- **Agente:** Sonnet 5
+- **Estimado:** 45 min
+- **Depende de:** 8.2
+- **Criterio de aceptación:** DDL en `observability/bq/events.sql` (versionado en repo, Principio VII); tabla `polaris-triage-demo.polaris_prod_events.events` creada en `us-central1` con partición por `timestamp`; `event_id` documentado como `insertId` de dedup; insert de prueba manual verificado.
+- **Jira ID:** —
+
+#### 8.4 Implementar auth de service account (JWT) en el Worker
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 8.2
+- **Criterio de aceptación:** `worker/auth/bq_jwt.js` firma JWT y obtiene access token con cache del token en KV hasta su expiración (Principio VI — cache antes de compute); tests unitarios de firma y expiración; la credencial vive en secret de Wrangler, nunca en el repo.
+- **Jira ID:** —
+
+#### 8.5 Implementar emitEvent() + wiring waitUntil + feature flag
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 8.3, 8.4
+- **Criterio de aceptación:** `worker/telemetry.js` construye el evento con los 27 campos y lo emite vía `ctx.waitUntil()`; gobernado por `TELEMETRY_ENABLED` (off = cero llamadas a BQ); un fallo del insert se traga con log y `error_stage`, nunca burbujea al usuario.
+- **Jira ID:** —
+
+#### 8.6 Tests de integración del sink
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 8.5
+- **Criterio de aceptación:** suite cubre: evento aterriza en BQ < 1 min (criterio Spec §4); fallo simulado de BQ no altera la respuesta al usuario; flag off = cero interacción; campos nullable (`intent_*`, `top1_*` cuando `route != kb_grounded`) llegan como NULL y no como valores inventados.
+- **Jira ID:** —
+
+#### 8.7 Documentar spec del dashboard
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** 8.2
+- **Criterio de aceptación:** `docs/features/dashboard.md` define los widgets mínimos (costo 24h, latencia p50/p95 por componente, cache hit rate, distribución de intents, distribución de idiomas de query y respuesta, ahorro estimado real-vs-contrafactual, volumen de requests) más las 2 métricas derivadas empíricas (`kb_coverage_pct`, `chunk_dominance_top1_ratio` — Plan §3), el SQL agregado de cada una, y el layout DaC (`observability/dashboards/*.json`).
+- **Jira ID:** —
+
+#### 8.8 Conectar Grafana Cloud a BQ + dashboards as code
+
+- **Agente:** Opus 5
+- **Estimado:** 2h
+- **Depende de:** 8.6, 8.7
+- **Criterio de aceptación:** Grafana Cloud Free conectado a BQ como datasource; dashboards versionados en `observability/dashboards/*.json` e importables sin edición manual; todos los widgets de 8.7 poblados con datos reales del entorno dev; link compartible generado (para el portafolio).
+- **Jira ID:** —
+
+#### 8.9 Simular pico de carga para poblar el dashboard
+
+- **Agente:** Sonnet 5
+- **Estimado:** 1h
+- **Depende de:** 8.8
+- **Criterio de aceptación:** script Python en `scripts/` genera tráfico sintético variado (idiomas, cache hits/misses, fuera de dominio) contra dev; el dashboard muestra el pico; costo del experimento registrado en `bitacora/hallazgos.md` (referencia: discovery costó USD 0.00283).
+- **Jira ID:** —
+
+#### 8.10 Auditoría de re-ataque en runtime (telemetría)
+
+- **Agente:** Opus 5 _(no Fable: framing adversarial dispara safeguards; encuadre "verificación de seguridad de mi propio sistema, en sandbox, autorizada")_
+- **Estimado:** 45 min
+- **Depende de:** 8.6
+- **Criterio de aceptación:** verificado que ninguna PII ni texto crudo de query llega a BQ (solo hashes); que un atacante no puede inflar el costo de BQ vía flood de requests (el budget/kill-switch cubre el caso); que el token JWT cacheado en KV no es legible desde el path del usuario; hallazgos y mitigaciones en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 8.11 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 8.9, 8.10
+- **Criterio de aceptación:** diff completo auditado contra specs 8.2/8.7, ADR-0002/0003, Plan §3 (schema sin campos fantasma ni renombres silenciosos) y Constitution; cero críticos abiertos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 8.12 Sync a Confluence + cierre
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 8.11
+- **Criterio de aceptación:** docs de features + reconciliación 8.1 reflejados en Confluence bajo el árbol del Plan técnico; worklog derivado de bitácora registrado en Jira; Historia POL-8 transicionada a Listo.
+- **Jira ID:** —
+
+**Total estimado POL-8: ~12.5h** (12 subtareas; la Historia más pesada de v2 — es el sustrato de medición del que dependen las afirmaciones de mejora de todas las demás).
 
 ## POL-9 — Multilingual explícito
 
