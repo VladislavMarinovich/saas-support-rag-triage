@@ -73,3 +73,21 @@
 **2. El umbral 0.50 del discovery generaliza a medias.** Con 10 casos sin chunk esperado (vs 4 del discovery): gatilla bien en lo claramente ajeno (6/10), pero los códigos de error inexistentes en la KB (ec-01 0.601, ec-03 0.676) y preguntas de producto sin artículo (man-13 0.690) puntúan ALTO — el denso encuentra vecinos plausibles y respondería con falsa confianza. Implicación: el "no sé" honesto de POL-9 no puede colgarse solo del score; y POL-11 (artículos de códigos) convierte estos 4 fallos en grounded medibles.
 
 **3. Fix menor de formato en el run:** `Costo/query` se imprimía con 6 decimales y $0.0000002 se redondeaba a $0.000000 (mentira visual). Corregido a 7 decimales antes de publicar el baseline.
+
+## [2026-08-21] POL-10 (10.5) — Auditoría Fable del trabajo del ejecutor
+
+**Veredicto: CERO CRÍTICOS. Aprobado para merge.**
+
+**Verificado de forma independiente (no confiando en el reporte del ejecutor):**
+- Las 4 fórmulas de métricas revisadas a mano contra eval.md §3 — correctas, incluida la exclusión de queries sin chunk esperado y el argsort estable ante empates.
+- Determinismo reproducido por el auditor: dos runs propios → reportes byte-idénticos, gasto incremental $0.00000 (99 cache hits).
+- La tabla global publicada en `baseline.md` coincide valor por valor con el run de auditoría (Recall@1 0.70, Recall@5 0.92, P@5 0.31, MRR 0.80, p50 176, p95 498, answer_type 6/10).
+- Corpus: 47 queries válidas (validador ✔), composición razonable (29 típicas / 7 typo_jerga / 7 fuera_de_dominio / 4 ambiguas · 26 ES / 21 EN), spot-check de etiquetas (es-06, amb-02, en-03) defendibles. Tests 9/9 ✔. Cache gitignoreado ✔.
+- Los 4 bloques de hallazgos del ejecutor son honestos y valiosos (divergencia de chunkers, re-etiqueta amb-02, secciones comidas por el filtro "still stuck?", estampa fable5 honesta).
+
+**Menores registrados (deuda, no bloquean):**
+1. **`post_baseline` es guard fail-fast, no la sección aparte que pide el spec §2/§6.** Correcto hoy (no existen casos); DEBE implementarse antes de que 9.8 agregue casos — es prerequisito de 10.7.
+2. **Heurística de costo (chars/4) duplicada** en `run.py` y `embed_cache.py` — unificar en un solo lugar cuando se toque el módulo (riesgo de divergencia silenciosa).
+3. **Enmienda de contrato aplicada por el auditor:** eval.md §4 ahora refleja que la paridad JS/Python queda diferida a POL-7 (chunkers divergentes 52 vs 90) — el spec no puede prometer lo que la realidad no permite.
+
+**Directiva nueva de Vlad (21-ago, durante la auditoría):** Polaris tiene routing a staff para preguntas que el bot no debe resolver (el schema ya lo contempla: `route: escalate_human`). El corpus de eval NO tiene esa categoría hoy. Directiva: cuando el corpus crezca (9.8 / 10.7), agregar categoría `staff_only` con `expected_route: escalate_human` (ej. disputas de facturación, borrado de cuenta) — el "no sé" y el "esto lo ve un humano" son resultados distintos y se miden distinto.
