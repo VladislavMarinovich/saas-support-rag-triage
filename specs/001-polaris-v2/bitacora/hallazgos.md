@@ -31,3 +31,15 @@
 **4. Cifras rancias post-discovery.** El discovery midió 52 chunks reales; siguen diciendo "89 chunks": `spec.md:13`, `docs/adr/0001-retrieval-without-a-dedicated-vector-db.md:9`, `docs/mapa-matematicas-polaris.md:24`, `docs/BITACORA.md:85`. **Decisión:** se corrigen dentro de la subtarea 11.1 (auditoría de chunks huérfanos — mismo momento en que las cifras de la KB se vuelven a tocar), no en POL-5.
 
 **Nota de registro:** este segmento corre con agente `watson-opus5` (no Fable): la sesión arrancó en Opus 5 y así queda registrado en el timeline — no se estampa un modelo que no fue. El criterio de los cuatro hallazgos quedó validado por decisión explícita de Vlad en sesión.
+
+## [2026-08-21] POL-10/POL-11 — Decisión: catálogo de códigos de error en la KB
+
+**Propuesta de Vlad (sesión 10.1):** la KB expandida debe incluir artículos de **códigos de error exactos** del producto (ej. `ER005 — Not synced with Google Ads`), tipo catálogo de troubleshooting.
+
+**Por qué entra sin romper scope freeze:** la selección de temas nuevos es la subtarea 11.2 (criterio ya aprobado); esto es una directiva de contenido, no scope nuevo.
+
+**Valor doble:**
+1. **POL-7:** los códigos exactos son el caso canónico donde BM25 supera al denso (un embedding representa mal el token `ER005`; el índice léxico lo clava). Es el delta más demostrable de la tabla v1 vs v2.
+2. **POL-10/11:** el corpus de eval (10.2) incluye 2-3 queries con códigos de error, etiquetadas `fuera_de_dominio` contra la KB actual (los artículos no existen aún). Cuando POL-11 escriba el catálogo, esas queries se re-etiquetan y pasan a grounded — la expansión de KB queda medida con números, no con sensación.
+
+**Acciones derivadas:** 10.2 agrega la categoría de queries con código de error · 11.2 incluye "catálogo de códigos de error" en los criterios de selección de temas.
