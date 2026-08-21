@@ -23,5 +23,32 @@
       "database_name": "polaris-tickets",
       "database_id": "17fad13e-ffca-4260-bb01-6a8aed34b8f3"
     }
-  ]
+  ],
+  // Entorno de pruebas (POL-11 subtarea 11.4). Se despliega con:
+  //   npx wrangler deploy --env dev
+  // y responde en saas-support-rag-triage-dev.<cuenta>.workers.dev — el nombre del
+  // Worker lleva el sufijo del entorno automaticamente.
+  //
+  // "routes": [] es OBLIGATORIO y no decorativo: `routes` se hereda del nivel
+  // superior, asi que sin este override un deploy a dev se apoderaria del dominio
+  // publico polaris.marinovich.co. Los bindings (assets, d1) NO se heredan, por eso
+  // se repiten aca; la D1 es una base aparte para que las pruebas no escriban
+  // tickets en la de produccion (que es el dataset de process mining).
+  "env": {
+    "dev": {
+      "workers_dev": true,
+      "routes": [],
+      "assets": {
+        "directory": "./web",
+        "binding": "ASSETS"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "polaris-tickets-dev",
+          "database_id": "738f5c88-7f3d-4e41-a221-acdfca1c2178"
+        }
+      ]
+    }
+  }
 }
