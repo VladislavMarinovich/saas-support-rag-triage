@@ -64,7 +64,7 @@ python -m src.eval.run --config v1 --config v2  # tabla comparativa con delta
 
 Una config declara: método de retrieval, versión de KB (conteo de chunks + hash del índice), top-K. La config exacta se imprime en el reporte — un número sin su config no es evidencia.
 
-**Paridad JS/Python (regla dura):** el scoring que el eval usa en Python debe producir el mismo ranking que el Worker en JS. Se garantiza con un set de **5 queries doradas** cuyos rankings esperados se verifican en ambos lados (test en `src/eval/test_parity.py` + test espejo en el Worker cuando POL-7 implemente BM25/RRF). Si la paridad se rompe, el eval no es evidencia de nada — es bloqueante.
+**Paridad JS/Python (regla dura, DIFERIDA a POL-7):** el scoring que el eval usa en Python debe producir el mismo ranking que el Worker en JS. Se garantiza con un set de **5 queries doradas** verificadas en ambos lados (`src/eval/test_parity.py` + test espejo en el Worker). *Estado real (auditoría 10.5, 21-ago):* hoy la paridad es INAPLICABLE — el eval indexa 52 chunks `source::heading` (chunker del discovery, contra el que está etiquetado el corpus) y el Worker consulta 90 chunks `stem#i` (`worker/kb_vectors.json`). POL-7 unifica el chunker ANTES de escribir el test de paridad y de construir BM25; las queries doradas se eligen en ese momento. Hasta entonces, las comparaciones v1 vs v2 valen solo DENTRO del eval (mismo índice), que es lo que el baseline necesita.
 
 ## 5. Costo y cache de embeddings
 
