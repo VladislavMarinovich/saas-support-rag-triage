@@ -15,3 +15,11 @@
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-19T18:55:44-05:00","commit_sha":"39beb2f","agente":"watson-fable5","nota":"bloque POL-6"}
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-19T18:58:42-05:00","commit_sha":"d28612b","agente":"watson-fable5","nota":"bloque POL-7 con ajuste chunk iman"}
 {"jira_id":"POL-5","event":"end","ts":"2026-08-19T19:05:17-05:00","agente":"watson-fable5","duracion_min":18,"nota":"pausa dia 19-ago; segmento vivo 18:47-19:05; hecho: bitacora + convencion + POL-6 + POL-7; falta: POL-8/9/10/11 + resumen + Actuar"}
+{"jira_id":"POL-5","event":"start","ts":"2026-08-21T12:58:35-05:00","agente":"watson-opus5","nota":"segmento 21-ago: POL-8 + POL-9 + POL-10 + POL-11 + resumen ejecutivo + fase Actuar (PR, rebase-merge, Confluence, worklog, transicion)"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:04:53-05:00","commit_sha":"f9683b9","agente":"watson-opus5","nota":"hallazgos de consistencia 21-ago"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:05:05-05:00","commit_sha":"0cd7d21","agente":"watson-opus5","nota":"gate de baseline a POL-6/7"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:06:02-05:00","commit_sha":"e1ad115","agente":"watson-opus5","nota":"bloque POL-8"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:06:43-05:00","commit_sha":"cbd1a6d","agente":"watson-opus5","nota":"bloque POL-9 con modo cliente"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:07:24-05:00","commit_sha":"72fdeae","agente":"watson-opus5","nota":"bloque POL-10 partido A/B"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:08:01-05:00","commit_sha":"1838eb5","agente":"watson-opus5","nota":"bloque POL-11 con auditoria huerfanos"}
+{"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:08:41-05:00","commit_sha":"fb8721f","agente":"watson-opus5","nota":"resumen ejecutivo + cierre v1.0"}
