@@ -2,7 +2,7 @@
 
 # Polaris v2 — Tasks breakdown
 
-**Versión:** DRAFT (POL-5 en curso)
+**Versión:** 1.0 (cierre POL-5, 2026-08-21)
 **Autor:** Vladislav Marinovich · Marinovich Consulting SAS
 **Refs:** Constitution v1.0.0 (`../../.specify/memory/constitution.md`), [Spec funcional](spec.md), [Plan técnico](plan.md), 6 ADRs en [`../../docs/adr/`](../../docs/adr/), [Discovery findings](discovery/findings.md).
 
@@ -101,9 +101,9 @@ Cerrada 2026-08-19. PR #4 rebase-mergeado con 24+ commits en `main`. Confluence:
 - 4.21 Publicar `summary.md` (métricas agregadas).
 - 4.22 Publicar `findings.md` (8 hallazgos empíricos con ajustes derivados al schema).
 
-### POL-5 — Tasks breakdown (esta Historia, en curso)
+### POL-5 — Tasks breakdown (esta Historia)
 
-Cerrada 2026-08-19. PR pendiente. Rama `feature/POL-5-tasks-breakdown`. Este documento.
+Iniciada 2026-08-19, cerrada 2026-08-21. Rama `feature/POL-5-tasks-breakdown`. Este documento.
 
 ## POL-6 — Canonicalize + KV cache
 
@@ -657,4 +657,45 @@ La KB crece de 20 artículos (52 chunks) a 60-100 artículos manteniendo la estr
 
 ## Resumen
 
-_A completar en commit siguiente — total estimado, gráfico de dependencias, camino crítico._
+### Total estimado
+
+| Historia | Subtareas | Estimado | Fase del Plan §4 |
+|---|---|---|---|
+| POL-10.A — Eval framework + baseline v1 (**gate**) | 6 | 6.5h | Fase 1 |
+| POL-11 — KB expansion (+ auditoría huérfanos) | 7 | 8.5h | Fase 2 |
+| POL-9 — Multilingual + modo cliente | 11 | 8.5h | Fases 3 y 6 |
+| POL-6 — Canonicalize + KV cache | 10 | 9.75h | Fase 4 |
+| POL-7 — Retrieval híbrido BM25 + RRF | 9 | 8.75h | Fase 5 |
+| POL-8 — Telemetría + dashboard Grafana | 12 | 12.5h | Fase 7 |
+| POL-10.B — Comparación final v1 vs v2 | 5 | 3.25h | Fase 8 |
+| **Total v2** | **60** | **~57.75h** | |
+
+Al ritmo declarado de 10-12 h/semana: **~5-6 semanas de implementación**, coherente con las 6-8 semanas del Plan (el margen restante es el colchón).
+
+**Regla de recalibración:** los estimados no traen colchón individual. La bitácora (`timeline.jsonl`) mide el real por subtarea; si las **dos primeras Historias cierran con desvío > 30%** sobre el estimado, se recalibra el resto ANTES de seguir — con dato, no con intuición. Es exactamente el tipo de pregunta que la bitácora XES-lite existe para responder.
+
+### Dependencias y camino crítico
+
+```mermaid
+graph LR
+    A["POL-10.A<br/>baseline · 6.5h<br/>GATE"] --> B["POL-11<br/>KB expansion · 8.5h"]
+    B --> C["POL-9<br/>multilingual+cliente · 8.5h"]
+    C --> D["POL-6<br/>canonicalize+cache · 9.75h"]
+    D --> E["POL-7<br/>híbrido BM25+RRF · 8.75h"]
+    E --> F["POL-8<br/>telemetría+dashboard · 12.5h"]
+    F --> G["POL-10.B<br/>comparación final · 3.25h"]
+    A -.desbloquea en paralelo.-> C
+    A -.schema congelado: 8.2-8.4 pueden adelantarse.-> F
+```
+
+- **El gate es real:** 6.1, 7.1, 9.1 y 11.1 dependen de 10.4 (baseline publicado). Nada de implementación arranca sin baseline (Principio XII). Este fue el hallazgo #2 del 21-ago — el borrador tenía el camino crítico invertido.
+- **Camino crítico serial:** 10.A → 11 → 9 → 6 → 7 → 8 → 10.B = las 57.75h completas. Con los solapes que el Plan §4 permite ("las Fases 2-6 pueden solaparse parcialmente"): POL-9 (trabajo de prompt) puede correr en paralelo con POL-6/7 (trabajo de flow), y las subtareas 8.2-8.4 de POL-8 (spec de telemetría, DDL, JWT) solo dependen del schema — que está congelado desde POL-4 — así que pueden adelantarse. **Camino crítico realista: ~49h.**
+- **Orden de activación de flags en producción ≠ orden de construcción** (Plan §5): telemetría se activa primero para poder medir el resto contra tráfico real, aunque se construya al final. La secuencia de arriba es de construcción.
+
+### Cabo suelto declarado (no resuelto en POL-5)
+
+**Fase 9 (cierre y publicación)** — activar `LIVE=true` con budget, alertas 50/80/100%, README público final, custom domain `grafana.marinovich.co`, sync final de Confluence — **no tiene Historia asignada**. Es trabajo de cierre del Epic POL-1, no de una feature. Recomendación: al llegar a 10.B, crear una Historia liviana de cierre (o checklist en el Epic) — decisión diferida a ese momento, registrada aquí para que no se pierda.
+
+### Lo que este documento NO cubre (scope freeze)
+
+Los 9 items de Spec §5 (re-embedding, re-chunking activo, classifier local, HyDE, Vectorize, feedback loop, PII redaction, rerank, multi-turn) siguen fuera de v2. El candidato UX capturado el 21-ago (chat general de plataforma + preguntas sugeridas + widget embebible) es **polish de última milla post-RAG**: se decide al cerrar v2, no antes, y no aparece en este breakdown.
