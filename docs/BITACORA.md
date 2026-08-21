@@ -8,7 +8,7 @@
 **La "joya" (vista cliente en vivo) FUNCIONA en producción** — verificado end-to-end en
 `saas-support-rag-triage.vladislav-335.workers.dev/cliente`:
 - Flujo: Turnstile → Worker (JWT SA WebCrypto) → embed Vertex (`text-embedding-005`, us-central1)
-  → cosine 89 vectores bundled → **Gemini 2.5 Flash-Lite** en Vertex → respuesta.
+  → cosine 90 vectores bundled → **Gemini 2.5 Flash-Lite** en Vertex → respuesta.
 - **Streaming SSE real**: Worker `streamGenerateContent`, parte answer/triage en `---TRIAGE---`,
   emite eventos `token`+`result`. Cliente **tipea en vivo** con reveal pausado por tiempo (~190 cps)
   + cursor. Secrets seteados en el Worker: `GCP_SA_KEY` + `TURNSTILE_SECRET`. Site key Turnstile
@@ -82,7 +82,7 @@ demo es el vehículo.
   `MONGODB_URI` en `.env`. `python -m src.mongo_store --ping` → OK.
 - [x] **24k tickets cargados** → `polaris.tickets` (23.994). Índices: ticket_id (unique),
   created_at.
-- [x] **89 chunks KB + vectores → `polaris.kb_chunks`** (doc: chunk_id, source, title,
+- [x] **90 chunks KB + vectores → `polaris.kb_chunks`** (doc: chunk_id, source, title,
   heading, text, vector). Vía `index_kb()` en el nuevo `vectorstore.py`.
 - [x] **`src/vectorstore.py` reescrito** → SIN Pinecone. `index_kb()` (chunk→embed→upsert
   a Mongo) + `search(query, top_k=3)` = **cosine exacto** (numpy, cache en memoria),
@@ -110,7 +110,7 @@ demo es el vehículo.
 - [ ] **Custom domain** `polaris.marinovich.co` (pestaña Domains del Worker; CNAME+SSL
   automáticos). `ai.marinovich.co` se reserva para la vitrina multi-demo futura.
 - [ ] **Chat en vivo** (fase 2): Worker con Vertex embed (REST) + cosine JS + Anthropic
-  REST. Los 89 vectores caben bundled o vía Mongo Data API. Maneja service-account GCP.
+  REST. Los 90 vectores caben bundled o vía Mongo Data API. Maneja service-account GCP.
 - [ ] **Bulk de respuestas** (14k RAG) cuando decidamos — o dejar la muestra si el foro
   ya cuenta la historia.
 
@@ -120,7 +120,7 @@ Formulario público donde el cliente escribe un ticket y recibe respuesta al ins
 
 **Decisiones firmadas:**
 - Auth GCP: **1 service account + JWT firmado en el Worker (WebCrypto RS256)**. Vertex
-  para embeddings (`text-embedding-005`, SIN re-indexar — reusa los 89 vectores) y para
+  para embeddings (`text-embedding-005`, SIN re-indexar — reusa los 90 vectores) y para
   el **LLM en Vertex**. Aclaración clave: el JWT es auth Worker↔Google, NO frena spam.
 - Anti-abuso (esa es la defensa real de créditos): **Turnstile** (captcha CF) + rate-limit
   por IP + cap de longitud de input. **Turnstile va desde el inicio** (decisión de Vlad).
@@ -128,11 +128,11 @@ Formulario público donde el cliente escribe un ticket y recibe respuesta al ins
 - Triage en vivo lo devuelve **Gemini 2.5 Flash-Lite (Vertex)** — modelo propio de Google,
   SIN habilitar Model Garden. (Claude daba 404 por no estar habilitado; Gemini es first-party
   y evita esa fricción — decisión de Vlad: 100% GCP, no dispersar.) sklearn no corre en Worker.
-- 89 vectores: **bundled** en el Worker (import del JSON).
+- 90 vectores: **bundled** en el Worker (import del JSON).
 
 **Arquitectura (ver diagrama):** Cliente → `POST /api/triage` al Worker → 1) verifica
 Turnstile → 2) rate-limit → 3) cap input → 4) access token GCP (JWT WebCrypto, cache 1h)
-→ 5) embed en Vertex → 6) cosine vs 89 vectores → 7) Claude en Vertex (respuesta grounded
+→ 5) embed en Vertex → 6) cosine vs 90 vectores → 7) Claude en Vertex (respuesta grounded
 + triage JSON) → 8) responde. `wrangler.jsonc` pasa de assets-only a `main` (worker) +
 binding ASSETS; el worker maneja `/api/*` y delega el resto a los assets estáticos.
 
@@ -151,7 +151,7 @@ Turnstile enforced. Todo en DEV (`workers.dev`); prod (`polaris.marinovich.co`) 
 
 ## ✅ Estado al cierre (30-jul) — vista en vivo
 - [x] `worker/index.js` completo: Turnstile → JWT SA (WebCrypto) → embed Vertex (us-central1)
-  → cosine 89 vectores → **Gemini 2.5 Flash-Lite** (JSON forzado: answer + triage) → responde.
+  → cosine 90 vectores → **Gemini 2.5 Flash-Lite** (JSON forzado: answer + triage) → responde.
 - [x] `web/cliente.html` + `cliente.js` (form + Turnstile `0x4AAAAAAECRIY52By-q-Pnp` + render
   markdown). Verificado en mock (`/cliente.html?mock=1`).
 - [x] `wrangler.jsonc` con `main` + binding ASSETS. Pusheado y desplegando.
@@ -215,7 +215,7 @@ derechos** → señal de upsell/add-on → routing a sales_success con tag `expa
 ## 🧭 Decisiones clave
 - **Estrategia de respuesta:** kb_autoresolve→respuesta RAG (LLM); escalado→ack
   templado (sin LLM). Usa el LLM solo donde agrega valor (decisión FinOps).
-- **Retrieval:** cosine exacto sobre 89 vectores en Mongo (ADR 0001); brute-force es
+- **Retrieval:** cosine exacto sobre 90 vectores en Mongo (ADR 0001); brute-force es
   óptimo a este tamaño (benchmark 0.824 in-memory vs 0.825 Pinecone). Vector DB solo
   cuando el corpus lo amerite (>~10-100k).
 - **Embeddings:** Vertex `text-embedding-005` (768d). **LLM:** Gemini

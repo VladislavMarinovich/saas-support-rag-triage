@@ -6,7 +6,7 @@
 
 ## Context
 
-The RAG assistant retrieves from a **small, static knowledge base: 89 chunks**
+The RAG assistant retrieves from a **small, static knowledge base: 90 chunks**
 (~370-token articles, section-level). The first build used **Pinecone** (a managed
 vector DB) for retrieval, alongside **MongoDB** as the application store (tickets +
 responses) and **Vertex AI** for embeddings.
@@ -42,7 +42,7 @@ Resulting stack: **MongoDB** (tickets · KB chunks · vectors · responses) +
 - Demonstrates judgment: the minimal stack that does the job.
 
 **Negative / limits**
-- Brute-force cosine is **O(n·d) per query** — fine at 89 vectors, but it does
+- Brute-force cosine is **O(n·d) per query** — fine at 90 vectors, but it does
   **not scale**. Past roughly tens of thousands of vectors, latency and cost demand
   an approximate-nearest-neighbour index.
 - Less hands-on surface with a managed vector DB *in this repo* (mitigated by this
