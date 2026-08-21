@@ -115,7 +115,7 @@ Normalización de la query a forma canónica idioma-agnóstica + cache persisten
 
 - **Agente:** Watson (Fable 5)
 - **Estimado:** 30 min
-- **Depende de:** —
+- **Depende de:** 10.4 (baseline v1 publicado — gate de Plan §4 Fase 1: ninguna mejora se implementa sin baseline contra el cual medirla, Principio XII)
 - **Criterio de aceptación:** `docs/features/canonicalize.md` define input/output, la regla de forma canónica (ignora orden de palabras, mayúsculas, puntuación y variantes triviales de fraseo), los casos edge (typos, jerga, acentos, queries fuera de dominio) y cómo se preserva el idioma original para servir desde cache.
 - **Jira ID:** —
 
@@ -205,7 +205,7 @@ Recuperación por dos vías en paralelo (índice denso existente + BM25 léxico 
 
 - **Agente:** Watson (Fable 5)
 - **Estimado:** 30 min
-- **Depende de:** —
+- **Depende de:** 10.4 (baseline v1 publicado — gate de Plan §4 Fase 1, Principio XII)
 - **Criterio de aceptación:** `docs/features/bm25.md` define la tokenización stemmer-less multilingüe (según ADR-0004), la estructura del índice, dónde se persiste y cómo se reconstruye cuando cambia la KB.
 - **Jira ID:** —
 
