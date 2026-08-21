@@ -14,3 +14,6 @@ docs/mapa-matematicas-polaris.md
 polaris-triage-demo-*.json
 *-service-account*.json
 *serviceaccount*.json
+
+# Cache de embeddings del eval (POL-10): se regenera solo, nunca se versiona
+src/eval/cache/
