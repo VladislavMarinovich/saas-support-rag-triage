@@ -23,3 +23,4 @@
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:07:24-05:00","commit_sha":"72fdeae","agente":"watson-opus5","nota":"bloque POL-10 partido A/B"}
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:08:01-05:00","commit_sha":"1838eb5","agente":"watson-opus5","nota":"bloque POL-11 con auditoria huerfanos"}
 {"jira_id":"POL-5","event":"commit","ts":"2026-08-21T13:08:41-05:00","commit_sha":"fb8721f","agente":"watson-opus5","nota":"resumen ejecutivo + cierre v1.0"}
+{"jira_id":"POL-5","event":"end","ts":"2026-08-21T13:25:37-05:00","agente":"watson-opus5","duracion_min":27,"nota":"cierre POL-5: tasks.md v1.0, PR #5 rebase-mergeado, Confluence 1245185; worklog y transicion Jira PENDIENTES por caida del conector Atlassian (payloads guardados en memoria de Watson)"}
