@@ -381,9 +381,105 @@ Cada request emite un evento con el schema de 27 campos (Plan §3, refinado emp�
 
 **Total estimado POL-8: ~12.5h** (12 subtareas; la Historia más pesada de v2 — es el sustrato de medición del que dependen las afirmaciones de mejora de todas las demás).
 
-## POL-9 — Multilingual explícito
+## POL-9 — Multilingual explícito (+ modo cliente, Fase 6)
 
-_A completar en commit siguiente._
+Detección de idioma antes de canonicalize, retrieval cross-lingual contra la KB completa, y respuesta **siempre** en el idioma del query original — incluyendo cuando el sistema dice "no sé" (bug empírico `es-06`). Comportamiento observable: una pregunta en español sobre un artículo en inglés se responde en español con cita al chunk fuente en inglés.
+
+Este bloque absorbe además la **Fase 6 del Plan (modo cliente)**: `spec.md` §3 la describe como comportamiento observable pero sin Historia asignada (hallazgo #3, decisión de Vlad 21-ago). Ambos trabajos editan el mismo artefacto — `worker/prompts/system_v2.md` — y juntarlos evita dos PRs pisando el mismo archivo.
+
+**Referencias:** Spec §3 (Multilingual explícito + Respuestas en modo cliente), Plan §4 Fases 3 y 6, Constitution Principio XIV (multilingual by default), Discovery hallazgo #5 (bug idioma en refusals), criterio de aceptación Spec §4.
+
+**[Ajuste post-discovery]** El discovery detectó un bug real: en la query `es-06` (español), el LLM respondió el "no sé" **en inglés** — cae al idioma del prompt del sistema cuando no cita evidencia. La instrucción de idioma debe ser explícita e incluir refusals y clarificaciones, no un implícito. La subtarea 9.3 lo resuelve y la 9.8 lo convierte en caso de regresión permanente del eval.
+
+#### 9.1 Documentar spec del contrato multilingüe
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** 10.4 (baseline v1 publicado — gate de Plan §4 Fase 1)
+- **Criterio de aceptación:** `docs/features/multilingual.md` define: detección de idioma (dónde ocurre en el hot path, qué pasa si falla → fallback a idioma de la KB con registro), el contrato "respuesta en el idioma del query INCLUYENDO refusals", interacción con el cache (el idioma es parte de la key — Plan §4 Fase 4), y los casos edge (query mixto, idioma no soportado por la KB).
+- **Jira ID:** —
+
+#### 9.2 Implementar detección de idioma en el Worker
+
+- **Agente:** Opus 5
+- **Estimado:** 1.5h
+- **Depende de:** 9.1
+- **Criterio de aceptación:** `worker/language.js` detecta ISO 639-1 del query antes de canonicalize; gobernado por `V2_MULTILINGUAL` (off = comportamiento v1 intacto); tests unitarios con los 30 queries del corpus discovery (10 ES + 10 EN + typos); el resultado alimenta `query_lang_detected` de la telemetría.
+- **Jira ID:** —
+
+#### 9.3 [Ajuste post-discovery] Instrucción explícita de idioma en el prompt (incluye refusals)
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 9.1
+- **Criterio de aceptación:** `worker/prompts/system_v2.md` instruye explícitamente "respond in the same language as the customer question, including refusals and clarifications"; verificado contra el caso `es-06` real: query en español fuera de cobertura recibe el "no tengo información" en español; cero regresión en respuestas grounded.
+- **Jira ID:** —
+
+#### 9.4 [Fase 6 — modo cliente] Documentar spec del modo cliente
+
+- **Agente:** Watson (Fable 5)
+- **Estimado:** 30 min
+- **Depende de:** 9.1
+- **Criterio de aceptación:** `docs/features/modo-cliente.md` define el registro objetivo (lenguaje del usuario final, sin jerga interna salvo nombres exactos de features, sin referencias meta tipo "según mis fuentes", estructura corta orientada a acción), los ejemplos few-shot a incluir, y el test de aceptación "pegable en chat de soporte sin edición".
+- **Jira ID:** —
+
+#### 9.5 [Fase 6 — modo cliente] Implementar prompt v2 con modo cliente + few-shot
+
+- **Agente:** Opus 5
+- **Estimado:** 1h
+- **Depende de:** 9.3, 9.4
+- **Criterio de aceptación:** `system_v2.md` integra las instrucciones de modo cliente con las de idioma (9.3) sin contradicción entre sí; gobernado por `V2_MODE_CLIENTE` (flag independiente de `V2_MULTILINGUAL`, Plan §5); flag off = prompt v1 byte a byte.
+- **Jira ID:** —
+
+#### 9.6 [Fase 6 — modo cliente] Validación manual de 10 respuestas
+
+- **Agente:** Watson (Fable 5) — Vlad valida, Watson asiste
+- **Estimado:** 45 min
+- **Depende de:** 9.5
+- **Criterio de aceptación:** 10 respuestas generadas con el prompt v2 revisadas una a una contra el criterio "pegable en chat de soporte sin edición" (Spec §4); resultado por respuesta (pasa/no pasa + motivo) en `bitacora/hallazgos.md`; ≥ 8/10 pasan o el prompt se itera antes de cerrar.
+- **Jira ID:** —
+
+#### 9.7 Ajustar UI del cliente para cita cross-lingual
+
+- **Agente:** Sonnet 5
+- **Estimado:** 45 min
+- **Depende de:** 9.2
+- **Criterio de aceptación:** la UI muestra la cita al chunk fuente aunque esté en idioma distinto al de la respuesta (Plan §4 Fase 3), sin romper el layout actual; verificado con el caso ES→EN en dev.
+- **Jira ID:** —
+
+#### 9.8 Casos multilingües + regresión es-06 al corpus de eval
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 9.3
+- **Criterio de aceptación:** el corpus de eval (POL-10) incorpora: queries en ≥ 2 idiomas sobre los mismos temas, y el caso permanente "query en cualquier idioma sobre tema fuera de KB → respuesta en el idioma del query" (regresión del bug es-06).
+- **Jira ID:** —
+
+#### 9.9 Verificación en sandbox
+
+- **Agente:** Opus 5
+- **Estimado:** 45 min
+- **Depende de:** 9.5, 9.7, 9.8
+- **Criterio de aceptación:** corpus completo corrido en dev con flags on: idioma de respuesta == idioma del query en el 100% de los casos (grounded Y refusals); citas cross-lingual visibles; flags off = v1 intacto; resultados en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 9.10 Auditoría Fable del PR
+
+- **Agente:** Fable 5 (auditor externo)
+- **Estimado:** 45 min
+- **Depende de:** 9.6, 9.9
+- **Criterio de aceptación:** diff auditado contra specs 9.1/9.4, Principio XIV y Constitution; especial atención a contradicciones entre instrucciones de idioma y de registro en el prompt combinado; cero críticos abiertos; hallazgos en `bitacora/hallazgos.md`.
+- **Jira ID:** —
+
+#### 9.11 Sync a Confluence + cierre
+
+- **Agente:** Sonnet 5
+- **Estimado:** 30 min
+- **Depende de:** 9.10
+- **Criterio de aceptación:** docs de features en Confluence; worklog derivado de bitácora; POL-9 transicionada a Listo.
+- **Jira ID:** —
+
+**Total estimado POL-9: ~8.5h** (11 subtareas; ~2.5h corresponden al sub-bloque de modo cliente absorbido de la Fase 6).
 
 ## POL-10 — Eval framework + baseline
 
