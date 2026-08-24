@@ -331,3 +331,62 @@ Hipótesis (a verificar en 11.5): las queries nuevas están escritas como *sínt
 2. **11.5** — etiquetas del corpus, queries de arreglo, guard `post_baseline`, y **re-estampar el baseline** (frontera: firma de Vlad).
 3. **11.6** — auditoría adversarial del PR completo de POL-11, en sesión aparte.
 4. **Deuda que este bloque deja abierta:** hay una SA key en texto plano en `.dev.vars.v1` dentro del árbol de trabajo (gitignored, permisos 600) — se borra con `rm .dev.vars.v1` si Vlad lo prefiere. Y dos rezagos fuera de scope para el barrido Tier 2 del cierre de POL-11: la afirmación falsa de `WORKFLOW.md` §7 sobre branch protection, y `.wrangler/` sin ignorar.
+
+## [2026-08-24] POL-11 (11.5) — Revisión de etiquetas: 9 queries re-etiquetadas, 13 chunks AGREGADOS, 0 reemplazados
+
+**Método antes que resultado.** Revisar etiquetas puede degenerar en ajustarlas hasta que los números suban, así que la revisión se hizo con tres reglas fijadas *antes* de mirar una sola métrica:
+
+1. Se compara el ranking del **índice del baseline reconstruido desde git** (`git archive 81d68a3` → chunker viejo + KB de 20 artículos = 52 chunks) contra el índice vigente (184), query por query. Así se distingue *qué falla desde siempre* de *qué se rompió al expandir* — sin esa reconstrucción, toda etiqueta parece sospechosa por igual.
+2. Cada cambio se justifica **citando el contenido del chunk**, nunca su posición en el ranking.
+3. `expected_chunks` admite varios válidos: se **agrega**, no se reemplaza. **13 chunk_ids agregados, 0 eliminados** (verificado por el script de re-etiquetado, que aborta si intenta borrar).
+
+**Se revisaron las 40 queries del baseline con chunk esperado** (las 37 originales + `ec-01/02/03`, re-etiquetadas en 11.3), no solo las que fallaban.
+
+### Lo que la reconstrucción del índice viejo reveló (y la revisión de Watson no podía ver)
+
+Watson midió sobre el índice de **168** chunks (post-11.3). El saneamiento de 11.4 lo llevó a **184** recuperando 18 secciones que llevaban invisibles desde el discovery. Medido sobre las 37 originales con las etiquetas SIN tocar:
+
+| Métrica | baseline v1 (52 chunks) | post-11.3 (168, Watson) | post-11.4 (184, hoy) |
+|---|---|---|---|
+| Recall@1 | 0.70 | 0.68 | **0.49** |
+| Recall@5 | 0.92 | 0.86 | 0.86 |
+
+**La caída de Recall@1 la causa el saneamiento, no la KB nueva.** De las 9 queries que perdieron el top-1, **7 lo perdieron ante una sección recuperada del MISMO artículo** — chunks que no existían en el índice cuando se escribieron las etiquetas, así que el etiquetador no pudo considerarlos. Solo 2 lo perdieron ante un artículo nuevo (`man-09`, `man-10`). Eso es deuda de etiquetado en el sentido más literal: la verdad de referencia estaba truncada por un defecto del instrumento (kb-audit §3).
+
+### Cambios aplicados, uno por uno (el argumento va sobre el contenido del chunk)
+
+**Cambian la métrica (4 queries):**
+
+- **`es-06`** («la alerta que configuré ayer no llegó al Slack») + **`en-10`** («the alert I set yesterday never fired») → **se agrega `alerts-not-firing::4.-alert-is-paused-or-misconfigured`**. El artículo abre con *"If yours isn't firing, check these common causes"* y numera cuatro causas; las causas **1, 2 y 3 ya estaban etiquetadas** y la 4 no, porque el chunker viejo la borraba (era la última sección del artículo, donde vivía el footer). Etiquetar 1-2-3 y no 4 no fue un criterio del etiquetador: fue el hueco del instrumento. Su contenido —"confirmá que la alerta esté encendida y que el correo del destinatario esté bien"— es una causa del mismo síntoma, al mismo nivel que sus hermanas.
+- **`es-06`** además → **se agrega `al002-notification-channel-unreachable::how-to-restore-delivery-after-al002`** (rank 5, no mueve la métrica). La query menciona **Slack** explícitamente, y AL002 es el artículo de *"la alerta disparó pero la notificación no llegó al canal"*, con el paso concreto de re-invitar la app de Polaris al canal. Es la mitad de la pregunta que `alerts-not-firing` no cubre.
+- **`en-10`** además → **se agrega `al001-alert-did-not-fire::how-to-diagnose-al001`** (rank 4, no mueve la métrica): procedimiento de diagnóstico del caso exacto "la alerta no disparó".
+- **`man-08`** («cuánto tarda en aparecer la data después de conectar GA4») → **se agrega `connectors-connect-ga4::troubleshooting`**. El chunk dice literalmente *"Initial syncs can take up to 1 hour"*: **es la respuesta a la pregunta**, más directa que `::steps` (que la menciona de pasada al final). También era una sección invisible antes de 11.4.
+- **`man-10`** («necesito rotar el token oauth de google ads») → **se agrega `er005-not-synced-google-ads::how-to-fix-er005-in-google-ads`**. Es el único cambio que convierte una FALLA de Recall@5 en acierto, así que se declara aparte: su paso 3 es exactamente el procedimiento de rotación del token de Google Ads (*Settings > Connectors > Google Ads > Reconnect*, iniciar sesión con la cuenta con acceso, solo un Admin puede hacerlo), con el detalle específico de la plataforma que la etiqueta vieja —genérica para los seis conectores— no tiene. Watson diagnosticó este caso antes de que nadie corriera una métrica nueva. **Se agrega también `er001-authorization-expired::how-to-clear-er001-by-reauthorizing-the-connector`** (rank 10: no aporta nada a la métrica), porque su texto nombra la operación con la palabra del usuario: *"Reauthorizing (also called reconnecting or rotating the token)"*.
+
+**No cambian la métrica (5 queries) — se agregan porque la etiqueta quedó incompleta, no porque falte un punto:**
+
+- **`es-09`** («el conector de HubSpot expiró y necesito reautorizarlo») → `er008-not-synced-hubspot::how-to-fix-er008-in-hubspot` (rank 5) y `er001-…::how-to-clear-er001…` (rank 12). El primero es el procedimiento de reconexión específico de HubSpot y nombra el token expirado como causa habitual.
+- **`es-07`** («me sale permiso denegado al abrir un dashboard») → `pf001-no-access-to-this-dashboard::how-to-get-access-after-pf001` (rank 3). PF001 **es** ese error, y el chunk da los pasos para recuperar el acceso.
+- **`es-03` / `en-06` / `typo-02`** (cambiar de plan, en ES, EN y con typos) → `billing-plans::how-to-check-or-upgrade-your-plan` (ranks 2/4/3). Contiene los pasos numerados *Settings → Billing → Manage Plan*. Otra sección recuperada por 11.4.
+
+### Lo que NO se tocó, y por qué (esto es la mitad importante)
+
+- **`typo-03`, `typo-04`, `amb-02` — intactas, fallando, por diseño.** Son los tres casos de término exacto y su valor está en fallar hoy: son la apuesta que POL-7 (BM25 + RRF) debe ganar. El script de re-etiquetado tiene un `assert` que aborta si alguna aparece en la lista de cambios. Nota adicional: el chunk esperado de `amb-02` es `connectors-roadmap::paid-add-on-connectors`, que sigue siendo huérfano — **hacerlo recuperable destruiría la evidencia**, así que tampoco se toca desde el lado de la cobertura.
+- **`typo-05`** («dashboards no cargan tras cambio plan») — **falla real, registrada como tal.** Perdió el top-5 (esperados en ranks 8 y 13). Se revisó chunk por chunk el nuevo top-5 y **ninguno responde la pregunta**: son pasos genéricos de "dashboard no carga" (sync, hard refresh, permisos, internet) y `db001::what-db001-points-at`, que es sobre fallas de render, no sobre el efecto de un cambio de plan. `billing-change-plan::what-happens-after` (rank 6) hasta contradice la premisa ("Analysts and Viewers see no change"). La etiqueta correcta sigue siendo la vieja y el sistema ya no la encuentra: **es degradación real, no deuda de etiquetado**.
+- **`man-09`** («sso login not working on growth plan») — el nuevo top-1 es `pf003 (connector not available on your plan)`, y **SSO no es un conector**: en toda la KB, SSO aparece solo como feature del plan Enterprise (`billing-plans::enterprise`, la etiqueta vigente). El chunk nuevo no responde mejor ⇒ la etiqueta no se toca y la pérdida de top-1 queda como falla real.
+- **`es-10`** («cómo se define una North Star») — nuevo top-1 `getting-started::5.-set-up-your-north-star-metric`: dos frases que dicen *dónde* ir, sin el procedimiento. `northstar-define::steps` (la etiqueta) tiene los 5 pasos. Puntero, no respuesta ⇒ no se agrega.
+- **`en-09`** («how does the attribution model work») — nuevo top-1 `attribution-models::view-your-attribution`: explica cómo **ver** la atribución en un dashboard, no cómo funciona el modelo. No se agrega.
+- **`man-04`** («cómo protege Polaris mis datos») — nuevo top-1 `security-privacy::security-concerns?`: dice a quién escribir si sospechás una brecha. Responde *"¿a quién aviso?"*, no *"¿cómo me protegen?"*. No se agrega. **Aviso para POL-7:** esa sección es semánticamente cercana al footer de soporte y ahora gana el top-1 del artículo de seguridad; si empieza a repetirse como top-1, es candidata a imán.
+- **`en-07`** («how do I set up UTM attribution») — nuevo top-1 `attribution-setup-utms::step-3:-verify-the-connection`. Es parte del mismo procedimiento, pero el **Step 2 ya existía en el índice viejo y el etiquetador NO lo etiquetó**: su criterio fue "el paso que responde la pregunta", no "el artículo entero". Aplicar el mismo criterio al Step 3 significa no agregarlo. Consistencia por encima de conveniencia.
+- **`es-02` / `en-02`** («dashboard en blanco») — nuevos top-1 y top-2 son `::5.-try-a-hard-refresh` y `::1.-check-your-internet-connection`. La sección 1 **existía en el índice del baseline y el etiquetador la excluyó** deliberadamente (etiquetó 2, 3 y 4). Ese criterio —los pasos genéricos de cliente no son la respuesta— se aplica igual a la 5. No se agregan. Estas dos queries ya fallaban Recall@1 en el baseline: no hay regresión.
+
+### Resultado de la revisión, sobre las 37 queries que estampó `baseline.md`
+
+| Métrica | baseline v1 (52 chunks) | 184 chunks, etiquetas viejas | 184 chunks, **etiquetas revisadas** |
+|---|---|---|---|
+| Recall@1 | 0.70 | 0.49 | **0.59** |
+| Recall@5 | 0.92 | 0.86 | **0.89** |
+| Precision@5 | 0.31 | — | **0.32** |
+| MRR | 0.80 | — | **0.73** |
+
+**La no-regresión sigue fallando, y se documenta como falla, no se maquilla.** Recall@5 cae 0.03 (una query: `typo-05`), Recall@1 cae 0.11 y MRR cae 0.07. La revisión de etiquetas explica y corrige buena parte de la brecha, **no toda**. Las cuatro queries con Recall@5 = 0 son `typo-03`, `typo-04`, `typo-05` y `amb-02`: tres son la apuesta declarada de POL-7 y la cuarta (`typo-05`) es una degradación real que POL-7 también debería recuperar (es una query con términos exactos: "cambio plan").
