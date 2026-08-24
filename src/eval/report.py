@@ -29,8 +29,64 @@ def _tabla_bloques(titulo: str, bloques: dict[str, dict], k: int) -> list[str]:
     return lineas
 
 
-def render(config: dict, agregados: dict, fecha: str) -> str:
-    """Arma el reporte completo. `config` trae la identidad exacta del experimento."""
+def _seccion_post_baseline(agregados_post: dict, k: int) -> list[str]:
+    """Sección APARTE para los casos `post_baseline: true` (eval.md §2 y §6).
+
+    Estas queries se agregaron después de que el baseline se midiera. Sus números
+    van acá y NO entran a ningún promedio de la tabla principal: mezclar las dos
+    poblaciones produce un agregado que no es comparable ni contra el baseline
+    (que no las midió) ni contra un run futuro (donde la mezcla sería otra).
+    Tampoco aplica la regla de no-regresión de eval.md §7 — no hay contra qué.
+    """
+    g = agregados_post["global"]
+    at = agregados_post["answer_type"]
+    # "0/0" se leería como falla; si no hay casos sin chunk esperado, se dice así
+    match_at = f"{at['aciertos']}/{at['n']}" if at["n"] else "n/a (todas tienen chunk esperado)"
+    lineas = [
+        f"## Casos post_baseline — sección aparte ({g['n'] + at['n']} queries)",
+        "",
+        "> Agregadas **después** del baseline. **No se promedian con la tabla de arriba "
+        "ni se comparan contra el baseline**, que nunca las midió (eval.md §2). La regla "
+        "de no-regresión (§7) no les aplica: sirven para medir cobertura de lo nuevo.",
+        "",
+        f"| Métrica | v1 sobre casos post_baseline |",
+        "|---|---|",
+        f"| Recall@1 | {_fmt(g['recall_1'])} |",
+        f"| Recall@{k} | {_fmt(g[f'recall_{k}'])} |",
+        f"| Precision@{k} | {_fmt(g[f'precision_{k}'])} |",
+        f"| MRR | {_fmt(g['mrr'])} |",
+        f"| p50 retrieval (ms) | {agregados_post['latencia_p50_ms']:.0f} |",
+        f"| p95 retrieval (ms) | {agregados_post['latencia_p95_ms']:.0f} |",
+        f"| Costo/query | ${agregados_post['costo_por_query_usd']:.7f} |",
+        f"| answer_type match | {match_at} |",
+        "",
+        f"Sobre {g['n']} queries con chunk esperado; {at['n']} sin chunk esperado.",
+        "",
+    ]
+    lineas += _tabla_bloques("Post_baseline por idioma", agregados_post["por_idioma"], k)
+    lineas += _tabla_bloques("Post_baseline por categoría", agregados_post["por_categoria"], k)
+    if at["detalle"]:
+        lineas += [
+            "### Post_baseline · answer_type (umbral top1_score < 0.50)",
+            "",
+            "| ID | Categoría | top1_score | ¿gatilla el umbral? |",
+            "|---|---|---|---|",
+        ]
+        for d in at["detalle"]:
+            lineas.append(
+                f"| {d['id']} | {d['categoria']} | {d['top1_score']:.3f} "
+                f"| {'sí' if d['ok'] else 'NO'} |"
+            )
+        lineas.append("")
+    return lineas
+
+
+def render(config: dict, agregados: dict, fecha: str, agregados_post: dict | None = None) -> str:
+    """Arma el reporte completo. `config` trae la identidad exacta del experimento.
+
+    `agregados_post` son los casos `post_baseline` — si vienen, se renderizan en
+    sección aparte al final, nunca mezclados con la tabla principal.
+    """
     k = config["top_k"]
     g = agregados["global"]
     at = agregados["answer_type"]
@@ -38,6 +94,8 @@ def render(config: dict, agregados: dict, fecha: str) -> str:
     lineas = [
         f"## Eval — {fecha} · corpus {config['corpus_version']} · "
         f"KB {config['kb_chunks']} chunks (hash {config['kb_hash']})",
+        "",
+        "### Población del baseline (la única comparable contra `baseline.md`)",
         "",
         f"| Métrica | {config['nombre']} |",
         "|---|---|",
@@ -69,8 +127,11 @@ def render(config: dict, agregados: dict, fecha: str) -> str:
             f"| {d['id']} | {d['categoria']} | {d['top1_score']:.3f} | {'sí' if d['ok'] else 'NO'} |"
         )
 
+    lineas.append("")
+    if agregados_post is not None:
+        lineas += _seccion_post_baseline(agregados_post, k)
+
     lineas += [
-        "",
         "### Config exacta",
         "",
         f"- **Config:** {config['nombre']} — {config['descripcion']}",

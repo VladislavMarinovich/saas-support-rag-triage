@@ -36,13 +36,26 @@ CORPUS_PATH = Path(__file__).resolve().parent / "corpus" / "corpus.jsonl"
 
 
 def cargar_corpus(path: Path = CORPUS_PATH) -> list[dict]:
-    filas = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
-    # los casos post_baseline entran al reporte en sección aparte (eval.md §2);
-    # hoy no existe ninguno — si aparecen sin manejo explícito, mejor frenar acá
-    post = [f["id"] for f in filas if f.get("post_baseline")]
-    if post:
-        sys.exit(f"corpus con casos post_baseline sin sección aparte implementada: {post} — implementala antes de correr")
-    return filas
+    """Lee el corpus completo. La separación por población la hace `particionar`."""
+    return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def particionar(corpus: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Separa el corpus en (baseline, post_baseline) — eval.md §2 y §6.
+
+    Los casos `post_baseline: true` se agregaron DESPUÉS de que el baseline se
+    midiera, así que promediarlos con los del baseline mezcla dos poblaciones y
+    produce un número que no se puede comparar contra nada: ni contra el baseline
+    (que no los midió) ni contra un run futuro (donde la mezcla será otra). Por eso
+    van a una sección aparte del reporte, con sus propios agregados.
+
+    Hasta 11.5 esta separación no existía y `cargar_corpus` abortaba fail-fast ante
+    el primer caso `post_baseline` (deuda menor #1 de la auditoría 10.5). El guard
+    protegía la validez del número; esta función la protege sin frenar el runner.
+    """
+    baseline = [f for f in corpus if not f.get("post_baseline")]
+    post = [f for f in corpus if f.get("post_baseline")]
+    return baseline, post
 
 
 def _normalizar(mat: np.ndarray) -> np.ndarray:
@@ -63,7 +76,6 @@ def correr_v1(corpus: list[dict], top_k: int) -> tuple[list[dict], dict]:
 
     # 2. correr cada query: embed (cacheado) + cosine + métricas
     resultados: list[dict] = []
-    latencias_embed: list[float] = []
     latencias_score: list[float] = []
     gasto_incremental = 0.0
     hits = 0
@@ -73,7 +85,6 @@ def correr_v1(corpus: list[dict], top_k: int) -> tuple[list[dict], dict]:
             hits += 1
         else:
             gasto_incremental += entrada["cost_usd"]
-        latencias_embed.append(entrada["latency_ms"])
 
         t0 = time.time()
         qv = _normalizar(np.asarray([entrada["vector"]], dtype=np.float32))[0]
@@ -83,12 +94,16 @@ def correr_v1(corpus: list[dict], top_k: int) -> tuple[list[dict], dict]:
         latencias_score.append((time.time() - t0) * 1000)
 
         ranking = [ids_kb[i] for i in orden]
-        resultados.append(metrics.evaluar_query(fila, ranking, float(scores[orden[0]]), k=top_k))
+        resultado = metrics.evaluar_query(fila, ranking, float(scores[orden[0]]), k=top_k)
+        # la latencia viaja con la fila para poder calcular percentiles POR POBLACIÓN
+        # (baseline vs post_baseline) sin re-correr el retrieval
+        resultado["latencia_embed_ms"] = entrada["latency_ms"]
+        resultado["post_baseline"] = bool(fila.get("post_baseline"))
+        resultados.append(resultado)
 
     stats = {
         "kb_chunks": len(kb),
         "kb_hash": kb_index_hash(kb),
-        "latencias_embed": latencias_embed,
         "latencias_score": latencias_score,
         "gasto_incremental": gasto_incremental
         + sum(e["cost_usd"] for e in entradas_kb if not e["cache_hit"]),
@@ -116,17 +131,32 @@ def main() -> None:
 
     corpus = cargar_corpus()
     corpus_hash = hashlib.sha256(CORPUS_PATH.read_bytes()).hexdigest()[:12]
+    corpus_baseline, corpus_post = particionar(corpus)
 
     resultados, stats = correr_v1(corpus, args.top_k)
 
-    costo_queries = sum(
-        (max(1, len(f["query"]) // 4) / 1000) * 0.000025 for f in corpus
-    )
-    agregados = metrics.agregar(
-        resultados,
-        latencias_ms=stats["latencias_embed"],
-        costo_por_query=costo_queries / len(corpus),
-        k=args.top_k,
+    def _agregar_poblacion(filas_corpus: list[dict], es_post: bool) -> dict | None:
+        """Agrega UNA población. Devuelve None si la población está vacía."""
+        if not filas_corpus:
+            return None
+        filas = [r for r in resultados if r["post_baseline"] is es_post]
+        costo = sum((max(1, len(f["query"]) // 4) / 1000) * 0.000025 for f in filas_corpus)
+        agg = metrics.agregar(
+            filas,
+            latencias_ms=[r["latencia_embed_ms"] for r in filas],
+            costo_por_query=costo / len(filas_corpus),
+            k=args.top_k,
+        )
+        agg["costo_total_usd"] = costo
+        return agg
+
+    agregados = _agregar_poblacion(corpus_baseline, es_post=False)
+    agregados_post = _agregar_poblacion(corpus_post, es_post=True)
+    if agregados is None:
+        sys.exit("el corpus no tiene ninguna query del baseline: no hay contra qué comparar")
+
+    costo_queries = agregados["costo_total_usd"] + (
+        agregados_post["costo_total_usd"] if agregados_post else 0.0
     )
 
     config = {
@@ -134,14 +164,16 @@ def main() -> None:
         "descripcion": "embed Vertex + cosine exacto in-memory, sin BM25 ni RRF",
         "kb_chunks": stats["kb_chunks"],
         "kb_hash": stats["kb_hash"],
-        "corpus_version": f"v1 ({len(corpus)} queries)",
+        "corpus_version": (
+            f"{len(corpus_baseline)} del baseline + {len(corpus_post)} post_baseline"
+        ),
         "corpus_hash": corpus_hash,
         "embed_model": "text-embedding-005",
         "top_k": args.top_k,
         "costo_total_usd": costo_queries + stats["costo_kb"],
     }
 
-    salida = report.render(config, agregados, args.fecha)
+    salida = report.render(config, agregados, args.fecha, agregados_post=agregados_post)
     print(salida)
     if args.out:
         args.out.write_text(salida, encoding="utf-8")
