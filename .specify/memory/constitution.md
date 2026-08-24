@@ -1,4 +1,5 @@
-<!-- Sync Impact Report: v0.0.0 → v1.0.0 (MAJOR: constitution inicial). Enmienda POL-1: se crea la Constitución de Polaris con 14 principios fundamentales que gobiernan el proyecto durante el ciclo v2 (canonicalize + hybrid + telemetría + multilingual + eval + KB expandida). Motivación: fijar bases filosóficas ANTES de codificar para tener criterio de aceptación/rechazo de PRs, evitar scope creep (regla operativa v(N+1)) y encodear prácticas senior demoables a reviewers USD. Templates dependientes creados: docs/WORKFLOW.md, .github/pull_request_template.md. -->
+<!-- Sync Impact Report: v1.0.0 → v1.1.0 (MINOR: nuevas reglas en secciones existentes). Enmienda POL-18 / ADR-0007: se agrega "Orquestación de agentes" a Flujo de Trabajo — separación orquestador/ejecutor/auditor, autonomía-en-el-medio con gate-en-fronteras (3 fronteras de Polaris declaradas), defensa de drift en 2 cadencias, un escritor por archivo, y tablero de orquestación en el repo como punto de rehidratación. Incluye PATCH: la cadena de trazabilidad decía "squash-merge" y la política vigente desde el 18-ago es rebase-and-merge (docs/WORKFLOW.md, PR #3) — corregido. Motivación empírica: (1) el handoff vivía en la memoria del orquestador y falló al retomar el 24-ago; (2) la ausencia de gate de radio de impacto costó Recall@5 0.92→0.86 en POL-11, pese a que eval.md §2 ya exigía por escrito revisar etiquetas al expandir la KB — un checklist saltable es sugerencia, no guardarraíl. Método: MC SFE; precedente fsp-consola v1.3.0 / CSOS-47. Templates dependientes: docs/WORKFLOW.md (flujo de gate), specs/001-polaris-v2/bitacora/ (tablero + registro de auditoría). Los 14 principios NO cambian.
+Anterior: v0.0.0 → v1.0.0 (MAJOR: constitution inicial). Enmienda POL-1: se crea la Constitución de Polaris con 14 principios fundamentales que gobiernan el proyecto durante el ciclo v2 (canonicalize + hybrid + telemetría + multilingual + eval + KB expandida). Motivación: fijar bases filosóficas ANTES de codificar para tener criterio de aceptación/rechazo de PRs, evitar scope creep (regla operativa v(N+1)) y encodear prácticas senior demoables a reviewers USD. Templates dependientes creados: docs/WORKFLOW.md, .github/pull_request_template.md. -->
 
 # Constitución Polaris
 
@@ -144,7 +145,7 @@ Son complementarios, no redundantes.
 ## Flujo de Trabajo
 
 **Cadena de trazabilidad integral**:
-- Constitution → Spec funcional → Plan técnico + ADRs → Tasks → branch `feature/POL-XX-desc` → commits con `Refs POL-XX` → PR con link Jira → squash-merge → cierre Jira → worklog → doc Confluence.
+- Constitution → Spec funcional → Plan técnico + ADRs → Tasks → branch `feature/POL-XX-desc` → commits con `Refs POL-XX` → PR con link Jira → **rebase-and-merge** (preserva commits granulares; ver `docs/WORKFLOW.md`) → cierre Jira → worklog → doc Confluence.
 
 **Ciclo PHVA por cambio**:
 1. **Planear**: Issue padre en Jira + descomponer en subtareas + ubicar el código afectado.
@@ -154,6 +155,36 @@ Son complementarios, no redundantes.
 
 **Regla operativa — Scope freeze v(N+1)**:
 Cuando un scope está congelado (Spec, Plan, Tasks aprobados para vN), toda idea nueva que surja durante la ejecución se etiqueta como **v(N+1)** y se difiere al backlog. No se agrega al scope activo. Primero terminar v(N), después evolucionar.
+
+**Orquestación de agentes (v1.1.0, POL-18 / ADR-0007)**:
+
+Polaris se construye con una tripulación de agentes. El reparto de roles y sus límites son norma, no costumbre.
+
+- **Separación de roles.** El **orquestador** especifica, despacha y hace la primera pasada de revisión — **no escribe código de implementación**. El **ejecutor** es efímero: nace sin contexto, implementa un bloque coherente, muere; el único con memoria es el orquestador más el repo. El **auditor** adversarial formal corre en **sesión aparte y renovada** (el que escribió el spec no da el veredicto sobre su propio spec). Escalera de modelos: Sonnet mecánico → Opus implementación y re-ataque en runtime → Opus/Fable juicio. Haiku excluido.
+- **Un escritor por rama y un escritor por archivo.** Dos agentes editando el mismo archivo colisionan y se pisan la evidencia. El ejecutor y el orquestador escriben `bitacora/hallazgos.md` y `bitacora/tablero.md`; el **auditor escribe solo `bitacora/registro-auditoria.md`**.
+- **Implementación por bloque, nunca en piloto automático.** Ritmo obligatorio: **despachar un bloque → auditar → Vlad aprueba → merge → siguiente**. Correr muchas subtareas en lote sin auditar entre ellas es causa raíz documentada de defectos (resumir-en-vez-de-transcribir, resets silenciosos de modelo).
+- **Revisión de Vlad antes de publicar.** El ejecutor pushea a su rama; **el diff se revisa y se aprueba antes del PR y del merge**. Una aprobación verbal del plan no equivale a haber visto el diff.
+
+**Autonomía en el medio, gate en las fronteras (v1.1.0)**:
+
+Autonomía plena del ejecutor en exploración e implementación — ahí la independencia da velocidad. **Gate duro con firma explícita de Vlad en las fronteras de la verdad compartida.** Las fronteras de Polaris son tres y se declaran acá para que ningún ejecutor las cruce por omisión:
+
+1. **Re-estampar el baseline** (`specs/001-polaris-v2/baseline.md`). Es el instrumento de medición del proyecto: toda afirmación de mejora de v2 se compara contra él (XII). Cambiarlo cambia la vara. Se re-estampa declarando qué cambió del instrumento y conservando la corrida anterior como referencia histórica.
+2. **Activar `LIVE=true` en cualquier entorno desplegado.** Expone Vertex AI en una URL pública y compromete el cost cap (IV). El desarrollo con `LIVE=true` va en `wrangler dev` local con `.dev.vars` fuera de git; ningún entorno desplegado lo lleva sin firma.
+3. **Merge a `main`.**
+
+El diagnóstico que originó la regla: el drift que costó errores apareció en la frontera de la verdad compartida, no en el código-código. El problema no fue dar libertad, fue darla también en la frontera equivocada.
+
+**Defensa de drift en dos cadencias (v1.1.0)**:
+
+- **Tier 1 — radio de impacto, por cambio.** Antes de tocar un elemento, **enumerar todo lo que lo referencia** (spec, plan, corpus de eval, código dependiente, tests) y verificar que nada quede desalineado. Si no se verifica, nada sigue. En Polaris el Tier 1 es **métrico**: la regla de no-regresión contra baseline (`eval.md` §7) y el guard `post_baseline` del runner, que se niega a correr antes que emitir un número que mezcle poblaciones.
+- **Tier 2 — barrido de consistencia, por hito.** Al cerrar una Historia, barrido global spec ↔ plan ↔ tasks ↔ código ↔ corpus. No es redundante con Tier 1: cinco subtareas correctas cada una en su radio pueden crear una inconsistencia que ninguna vio, porque el drift **emergió de la interacción**.
+- **Mecanizado, no "acordate".** Un checklist saltable es una sugerencia. La verificación válida deja **evidencia verificable** (números, diffs, salidas de comando), no la afirmación "se revisó".
+- **Límite honesto declarado.** Tier 1 caza rezago, no mentira: un ejecutor que declara verificado sin verificar pasa el chequeo. La barrera final es la evidencia más la auditoría adversarial independiente.
+
+**Tablero de orquestación (v1.1.0)**:
+
+El hilo entre sesiones vive en el repo, en `specs/001-polaris-v2/bitacora/tablero.md` — **no en la memoria de un agente**. Cualquier sesión nueva lo lee primero y continúa desde la última entrada. Registra qué pasó, veredicto de auditoría, qué sigue, qué espera firma, y el gasto de orquestación. No reemplaza a `tasks.md` (tareas), Jira (bloques y worklog) ni la rama (código): captura el hilo de orquestación. Se actualiza tras cada despacho y cada gate.
 
 ## Formato de referencia a principios
 
@@ -192,5 +223,6 @@ No se cambia la Constitución "porque parece buena idea". Se cambia cuando la re
 | Versión | Fecha | Cambio |
 |---|---|---|
 | 1.0.0 | 2026-08-18 | Constitución inicial con 14 principios. Base del Spec Kit v2. |
+| 1.1.0 | 2026-08-24 | Orquestación de agentes, gate en fronteras (3 declaradas), defensa de drift en 2 cadencias, un escritor por archivo, tablero en repo. Corrige squash→rebase. ADR-0007 / POL-18. |
 
 **Autoría**: Vladislav Marinovich · Marinovich Consulting SAS · ops@marinovich.co
