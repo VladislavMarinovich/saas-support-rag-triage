@@ -271,3 +271,63 @@ Hipótesis (a verificar en 11.5): las queries nuevas están escritas como *sínt
 **9. Rezago detectado y NO corregido (fuera de scope, para Tier 2).** `docs/WORKFLOW.md` §7 afirma *"GitHub Free no soporta branch protection en repos privados"*. La Constitución v1.1.0 corrigió exactamente esa afirmación en su propio texto el 24-ago (el repo es **público** y sí la ofrece), pero la copia de WORKFLOW.md quedó viva. Es la lección "barrer la clase, no la instancia" repitiéndose: se corrigió la instancia en la Constitución y quedó la hermana. No se toca acá porque este bloque no es de gobernanza — se registra para el barrido de consistencia del cierre de POL-11.
 
 **10. `.wrangler/` no está en `.gitignore`.** Aparece como directorio sin trackear en `git status` desde hace días (estado local de D1 y caché de build de wrangler). No se agregó al `.gitignore` porque no es de este bloque, pero es ruido permanente en `git status` y un candidato a commit accidental.
+
+## [2026-08-24] POL-11 (11.4.b) — FRENADO: `tablero.md` no existe en esta rama (parte F del encargo)
+
+**El encargo pide actualizar `specs/001-polaris-v2/bitacora/tablero.md`. En `feature/POL-11-kb-expansion` ese archivo no existe.** El tablero (y `registro-auditoria.md`, y la Constitución v1.1.0) nacieron en POL-18, que se mergeó a `main` el 24-ago — **después** de que esta rama se creara. Medido: `git log HEAD..main` son **8 commits** de POL-18 que la rama no tiene (ADR-0007, constitución v1.1.0, tablero, registro de auditoría, eventos y las dos correcciones de squash/atomicidad); `git log main..HEAD` son **34 commits** de POL-11. `git cat-file -e main:…/tablero.md` da existe; sobre `HEAD`, no existe.
+
+**Por qué no se improvisó una solución.** Las tres salidas posibles son todas decisiones de orquestación, no de ejecución:
+
+1. **`git rebase main` sobre la rama.** Es lo que va a haber que hacer igual antes del PR (rebase-and-merge es la única estrategia admitida) y sería lo correcto — pero reescribe la historia de una rama ya pusheada, exige `--force-with-lease`, y los 8 commits entrantes tocan `hallazgos.md` y `timeline.jsonl`, los dos archivos a los que este bloque le acaba de agregar contenido al final. Conflicto casi seguro en ambos, con resolución que es criterio de quién ordena la bitácora, no mecánica. No es una decisión que un ejecutor efímero deba tomar por su cuenta a mitad de bloque.
+2. **Traer solo el archivo con `git checkout main -- …/tablero.md`.** Deja la rama con un commit que "crea" un archivo que en `main` ya existe: en el rebase eso es un conflicto add/add y, peor, la historia contaría que POL-11 inventó el tablero. Ensucia justo la trazabilidad que el tablero existe para proteger.
+3. **Escribir el tablero directo en `main`.** Prohibido (Principio VII, sin push directo a `main`).
+
+**Qué se hizo en su lugar.** El registro completo del bloque —el que la Constitución v1.1.0 manda al tablero— queda escrito abajo, íntegro, en este archivo, que **sí** existe en la rama y es co-propiedad del ejecutor y el orquestador. El contenido no se pierde ni queda en el chat; queda versionado en el repo, que es el punto de la regla. **Falta el gesto de moverlo al tablero, y eso queda pendiente de decisión de Watson:** rebasar la rama sobre `main` (recomendado, hay que hacerlo igual) y entonces trasladar la entrada, o transcribirla al tablero desde `main` en la próxima pasada de orquestación.
+
+**Nota de método.** El hueco es la firma de un problema estructural, no un descuido: la gobernanza (POL-18) se mergeó a `main` mientras una rama larga de feature seguía viva, así que las reglas nuevas —y el archivo donde se cumplen— no existen para quien trabaja en esa rama. Una regla que vive en un archivo que la rama de trabajo no tiene es inaplicable desde la rama de trabajo. Candidato a regla: al mergear gobernanza, rebasar de inmediato las ramas vivas.
+
+---
+
+## [2026-08-24] POL-11 (11.4.b) — REGISTRO DE BLOQUE (contenido destinado a `tablero.md`)
+
+> Esta entrada es la que debería vivir en `specs/001-polaris-v2/bitacora/tablero.md`; está acá por el bloqueo del hallazgo anterior. Escrita para que alcance sin haber estado en la sesión.
+
+**Identificación.** Bloque **11.4.b** · subtask Jira **POL-17** · Historia **POL-11** · rama `feature/POL-11-kb-expansion`.
+**Agente:** ejecutor efímero, modelo real **Claude Opus 5** (`claude-opus-5`), estampado como `ejecutor-opus5`. Nació sin contexto, se rehidrató leyendo tablero (desde `main`) → constitución → `plan.md` §5 → código.
+**Ventana:** inicio **2026-08-24T17:57:00−05:00** (momento de la primera lectura del tablero; ±2 min, no hay reloj de arranque instrumentado) · fin **2026-08-24T18:12:00−05:00** · **duración ≈ 15 min** contra 45 min estimados en el encargo.
+
+**Consumo de tokens de la sesión — ESTIMADO, con la fuente declarada.** No tengo acceso a un contador de uso por turno. La única señal disponible es el presupuesto de contexto que el arnés reporta, que arrancó en 15.000.000 y al escribir esto marca ≈14.863.000 restantes: **≈137.000 tokens consumidos**. Ese número **agrega entrada y salida de todos los turnos** (y cuenta las relecturas de contexto cacheado), así que **no puedo separarlo en entrada/salida** y debe leerse como orden de magnitud, no como medición. Lo escribo así a propósito: para el instrumento de tesis vale más un número honestamente etiquetado como estimado que uno preciso e inventado.
+
+**Costo de Vertex del bloque: USD 0,000211.** Medido con `countTokens` (que no cobra) sobre el payload exacto: generación 964 tokens de entrada + 284 de salida en `gemini-2.5-flash-lite`, más dos embeds de ~20 tokens. El componente de embed es estimado (la API no devolvió `statistics.token_count`) y pesa 0,2% del total.
+
+**Qué se hizo, commit por commit** (SHAs de esta rama; cambian si se rebasa):
+
+| SHA | Qué |
+|---|---|
+| `a017c80` | `docs(bitacora)` — el entorno dev de 11.4 queda registrado como desvío justificado del plan |
+| `c32af69` | `feat(worker)` — `LIVE` deja de ser `const` del módulo y pasa a `env.LIVE` vía `isLive()`; `vars.LIVE="false"` en producción y en `env.dev` |
+| `12a3d67` | `chore(dev)` — `.dev.vars.v1.example` / `.dev.vars.v2.example` versionados; `.gitignore` pasa a `.dev.vars.*` con excepción para `*.example` |
+| `b8ca4c6` | `docs(workflow)` — sección 10 de `WORKFLOW.md`: probar en dev antes de prod |
+| `5ce94c6` | `docs(bitacora)` — 10 hallazgos de verificación |
+
+**Qué se verificó y CÓMO** (evidencia, no afirmación):
+
+- **200 real, con dinero real.** `npx wrangler dev --env-file .dev.vars.v1` (LIVE=true, `127.0.0.1:8788`) → `POST /api/triage` con *"I get error ER005 and my Google Ads connector is not syncing. How do I fix it?"* → **HTTP 200**, stream SSE, respuesta grounded de 6 pasos con `**Note:** Only an Admin can reconnect the Google Ads connector`, y `sources: ["ER005 — Not synced with Google Ads"]`. Triage: `connectors / how_to / high / kb_autoresolve / neutral`. Top-3 del retrieval: `er005-not-synced-google-ads#2` (0,9060), `#1` (0,8857), `#0` (0,8621). **Es la primera vez que el índice de 261 chunks de 11.4 se ejercita por HTTP** — hasta hoy solo estaba verificado offline, porque el `const` mantenía el endpoint muerto.
+- **503 con el mismo binario.** `npx wrangler dev` sin `--env-file` → wrangler reporta `env.LIVE ("false")` al arrancar y `POST /api/triage` devuelve `503 {"error":"demo_paused","detail":"The live demo is paused to conserve credits. See the recorded demo (GIF) and case study."}`, idéntico al contrato anterior.
+- **El parseo, no la intuición.** Tabla de 16 casos ejecutada contra la función `isLive` **extraída del archivo real** (no una copia): solo `"true"` / `"TRUE"` / `"  true  "` / booleano `true` encienden; `"false"`, `"FALSE"`, `"1"`, `"0"`, `"yes"`, `"on"`, `"trueish"`, `""`, `null`, `"null"`, `undefined`, `env` sin la clave y `env` entero `undefined` apagan.
+- **Nada se publicó.** `POST` a `saas-support-rag-triage-dev.…workers.dev/api/triage` → **503**; `POST` a `polaris.marinovich.co/api/triage` → **503**. `wrangler deployments list --env dev` sigue en la versión `da8ac79a-0742-4617-a71a-30525d6ed440` del **2026-08-21T23:28:56Z**, la de 11.4: **cero deploys en este bloque**.
+- **El `.gitignore` funciona.** `git check-ignore -v` confirma `.dev.vars` y `.dev.vars.v1` ignorados y `.dev.vars.v1.example` **no** ignorado; `git status` con los archivos reales presentes no los muestra.
+
+**Qué NO se pudo verificar, dicho explícitamente:**
+
+- **El código nuevo no corrió en ningún entorno desplegado.** La verificación fue local. Que producción y dev responden 503 hoy lo prueba el `curl`, pero ese 503 lo emite todavía el **código viejo** (`const LIVE = false`), porque no hubo deploy. Que el `env.LIVE` desplegado se lea correctamente se comprobará en el primer deploy — y ese deploy no es de este bloque.
+- **El perfil v2 no se ejercitó.** `.dev.vars.v2.example` se escribió pero no se probó levantando el Worker con él: las cinco flags `V2_*` no están implementadas, así que hoy no cambian ningún comportamiento observable. La plantilla es contrato, no está verificada.
+- **El desglose entrada/salida de mis propios tokens** (ver arriba).
+- **Nada del alcance de 11.5.** No se tocó el guard `post_baseline`, no se revisaron etiquetas del corpus, no se corrió el eval, no se re-estampó `baseline.md`, no se abrió PR. Frenado a propósito.
+
+**Qué sigue.**
+
+1. **Decisión de Watson (bloqueante para el hilo):** rebasar `feature/POL-11-kb-expansion` sobre `main` para que la rama tenga el tablero y la Constitución v1.1.0 — o trasladar esta entrada al tablero desde `main`. Ver el hallazgo anterior.
+2. **11.5** — etiquetas del corpus, queries de arreglo, guard `post_baseline`, y **re-estampar el baseline** (frontera: firma de Vlad).
+3. **11.6** — auditoría adversarial del PR completo de POL-11, en sesión aparte.
+4. **Deuda que este bloque deja abierta:** hay una SA key en texto plano en `.dev.vars.v1` dentro del árbol de trabajo (gitignored, permisos 600) — se borra con `rm .dev.vars.v1` si Vlad lo prefiere. Y dos rezagos fuera de scope para el barrido Tier 2 del cierre de POL-11: la afirmación falsa de `WORKFLOW.md` §7 sobre branch protection, y `.wrangler/` sin ignorar.
