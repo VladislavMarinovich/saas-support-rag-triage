@@ -8,8 +8,9 @@ Config v1 = retrieval denso puro: embed de la query con Vertex text-embedding-00
 (vía src/embed.py, el mismo módulo que indexa producción) y cosine exacto contra
 la KB chunkeada en memoria — la misma matemática de src/vectorstore.py::search
 (normalizar + dot product) sin el acople a Mongo, porque el índice del eval debe
-ser los 52 chunks `source::heading` contra los que está etiquetado el corpus
-(ver bitacora/hallazgos.md 21-ago sobre la divergencia de chunkers).
+ser el mismo `source::heading` contra el que está etiquetado el corpus (hoy 184
+chunks tras el saneamiento de 11.4; eran 52 cuando se estampó el baseline v1 —
+ver bitacora/hallazgos.md 21-ago sobre la divergencia de chunkers).
 
 Determinismo: los embeddings van a src/eval/cache/ (gitignoreado); a partir del
 primer run, vectores, rankings, métricas y latencias reportadas quedan
