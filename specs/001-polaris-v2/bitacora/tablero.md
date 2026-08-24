@@ -10,7 +10,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 
 ## 📍 ESTADO VIVO — punto de rehidratación
 
-> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (Watson).
+> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (Watson) — POL-18 mergeado; la cola arranca en 11.4.b.
 
 - **Modo:** Watson orquesta tripulación efímera; ejecutores implementan por bloque; auditor renovado en sesión aparte. **Gate con firma de Vlad en las 3 fronteras** (re-estampar baseline · `LIVE=true` desplegado · merge a `main`).
 - **Rama viva:** `feature/POL-11-kb-expansion` (POL-11 al 60%) · rama de gobernanza: `docs/POL-18-gobernanza-orquestacion`.
@@ -20,7 +20,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 
 | # | Bloque | Estado | Quién |
 |---|---|---|---|
-| 1 | **POL-18 gobernanza** (esta enmienda) | 🔵 en curso — espera revisión de diff + firma de merge | Watson |
+| 1 | ~~POL-18 gobernanza~~ | ✅ **mergeado** (PR #7, firma de Vlad 24-ago) — reglas vigentes | Watson |
 | 2 | **11.4.b** `LIVE` a variable de entorno + cierre del entorno dev | ⏳ prompt entregado, sin despachar | ejecutor Opus |
 | 3 | **11.5** etiquetas + queries de arreglo + **re-estampar baseline** | ⏳ prompt entregado, sin despachar — **FRONTERA: firma de Vlad** | ejecutor Opus |
 | 4 | **11.6** auditoría adversarial del PR completo de POL-11 | ⧗ pendiente | **auditor en chat aparte** |
@@ -28,7 +28,6 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 
 ### Esperando firma o decisión de Vlad
 
-- **Merge de POL-18** (frontera: merge a `main`) — revisar diff de la enmienda constitucional.
 - **Re-estampar el baseline en 11.5** (frontera: instrumento de medición). Vlad dio GO al saneamiento el 21-ago; la firma del re-estampado se pide al ver los números nuevos.
 - **Deuda declarada con dueño:** mecanizar el Tier 1 como hook pre-commit (hoy es métrico vía eval). Se evalúa al cerrar POL-11 (ADR-0007, alternativa diferida).
 
@@ -41,6 +40,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 | POL-10.A Eval framework + baseline (**el gate**) | ✅ mergeado, POL-10 En curso (falta 10.B) | PR #6 · Confluence 1277954 / 1310721 · R@1 0.70 · R@5 0.92 · MRR 0.80 |
 | POL-11 · 11.1 auditoría de huérfanos | ✅ Listo | `kb-audit.md` — el "25% invisible" era artefacto del instrumento |
 | POL-11 · 11.2 spec de expansión | ✅ Listo | `docs/features/kb-expansion.md` — 75 artículos objetivo |
+| POL-18 Gobernanza · Constitución v1.1.0 | ✅ Listo | PR #7 · ADR-0007 · squash mecanizado en el repo |
 | POL-11 · 11.3 redacción + 11.4 saneamiento | ✅ hechas, revisadas por Watson | 55 artículos · índice 52→184 sin perder ids · producción 90→261 chunks |
 
 ### Deuda abierta que bloquea 11.5
