@@ -5,6 +5,22 @@
   "name": "saas-support-rag-triage",
   "compatibility_date": "2025-06-01",
   "main": "worker/index.js",
+  // Feature flags del Worker (plan.md §5). Llegan al codigo como STRING, por eso
+  // worker/index.js las parsea explicitamente en vez de evaluarlas como booleanos.
+  //
+  // LIVE es el kill-switch del Principio IV y va en "false" en TODOS los entornos
+  // DESPLEGADOS — este archivo describe entornos publicos. LIVE="true" existe solo
+  // en los archivos `.dev.vars*` locales, que estan fuera de git y solo los lee
+  // `wrangler dev`. Ponerlo en "true" aca publica Vertex en una URL abierta: es una
+  // frontera y requiere firma del owner (Constitucion v1.1.0, frontera 2).
+  //
+  // OJO: `vars` NO se hereda en los entornos con nombre de wrangler, asi que el
+  // bloque env.dev repite el suyo. Eso es a favor: un entorno nuevo que se olvide
+  // de declararlo se queda sin la var y el default seguro del codigo lo deja en
+  // false igual.
+  "vars": {
+    "LIVE": "false"
+  },
   "assets": {
     "directory": "./web",
     "binding": "ASSETS"
@@ -38,6 +54,13 @@
     "dev": {
       "workers_dev": true,
       "routes": [],
+      // Repetido a proposito: `vars` no es heredable. Y en "false" a proposito: la URL
+      // de workers.dev es PUBLICA y sin auth — con LIVE="true" cualquiera que la
+      // encuentre quema credito de Vertex. Para probar en vivo se usa `wrangler dev`
+      // local con `.dev.vars.v1` (ver docs/WORKFLOW.md §11).
+      "vars": {
+        "LIVE": "false"
+      },
       "assets": {
         "directory": "./web",
         "binding": "ASSETS"

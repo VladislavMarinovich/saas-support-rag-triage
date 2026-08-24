@@ -16,6 +16,9 @@
 // Secrets (wrangler / dashboard, NUNCA en Git):
 //   GCP_SA_KEY        = JSON completo de la service account (embeddings + Gemini)
 //   TURNSTILE_SECRET  = secret key del widget Turnstile
+//
+// Vars (wrangler.jsonc, no son secretas):
+//   LIVE = "false"    kill-switch del endpoint en vivo (ver isLive() más abajo)
 
 import kbChunks from "./kb_vectors.json";
 
@@ -26,8 +29,25 @@ const GEMINI_MODEL = "gemini-2.5-flash-lite";    // LLM en Vertex (verificado)
 const MAX_INPUT = 2000;                           // cap de longitud del mensaje
 // Kill-switch del endpoint en vivo: en false, /api/triage responde "pausado" (503) sin
 // llamar a Vertex — el sitio estático (foro, /cliente, GIF) sigue arriba, gasto = $0.
-// Poner en true (+ push) para reactivar la demo (hacerlo tras el hardening / al buscar empleo).
-const LIVE = false;
+//
+// Se lee del ENTORNO (`env.LIVE`), no de una constante en el módulo: así se prueba en
+// local con `wrangler dev` + `.dev.vars` (LIVE="true") sin tener que tocar código ni
+// publicar un entorno con el gasto abierto (plan.md §5 · Constitución, Principio IV).
+//
+// OJO CON EL TIPO: las vars de Wrangler llegan como STRING, y en JS `"false"` es truthy.
+// Un `if (env.LIVE)` encendería el gasto justo cuando el flag dice que no. Por eso se
+// parsea explícitamente contra una lista blanca de un solo valor: solo la cadena "true"
+// (sin distinguir mayúsculas, tolerando espacios) enciende la demo. Ausente, vacío o
+// cualquier otro valor ⇒ false. El default seguro es la regla: un typo en la config
+// nunca debe abrir la billetera de Vertex, y todo entorno DESPLEGADO va en false —
+// `LIVE=true` vive solo en `.dev.vars` local (fuera de git); activarlo en un entorno
+// desplegado es una frontera que requiere firma del owner.
+function isLive(env) {
+  const raw = env?.LIVE;
+  // Un booleano real (posible vía --var o un test) se respeta tal cual.
+  if (typeof raw === "boolean") return raw;
+  return String(raw ?? "").trim().toLowerCase() === "true";
+}
 
 // Etiquetas válidas del triage — se las pasamos al LLM para que no invente valores.
 const LABELS = {
@@ -250,8 +270,8 @@ async function handleTriage(request, env, ctx) {
   const json = (obj, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
 
-  // Kill-switch: demo pausada -> no se llama a Vertex (ver LIVE arriba).
-  if (!LIVE) return json({ error: "demo_paused", detail: "The live demo is paused to conserve credits. See the recorded demo (GIF) and case study." }, 503);
+  // Kill-switch: demo pausada -> no se llama a Vertex (ver isLive arriba).
+  if (!isLive(env)) return json({ error: "demo_paused", detail: "The live demo is paused to conserve credits. See the recorded demo (GIF) and case study." }, 503);
 
   let body;
   try {
