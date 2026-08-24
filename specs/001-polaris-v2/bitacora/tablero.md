@@ -10,7 +10,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 
 ## 📍 ESTADO VIVO — punto de rehidratación
 
-> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (Watson) — POL-18 mergeado; la cola arranca en 11.4.b.
+> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (Watson) — POL-18 mergeado; 11.4.b cerrada y rama rebasada sobre main; sigue 11.5 (frontera).
 
 - **Modo:** Watson orquesta tripulación efímera; ejecutores implementan por bloque; auditor renovado en sesión aparte. **Gate con firma de Vlad en las 3 fronteras** (re-estampar baseline · `LIVE=true` desplegado · merge a `main`).
 - **Rama viva:** `feature/POL-11-kb-expansion` (POL-11 al 60%) · rama de gobernanza: `docs/POL-18-gobernanza-orquestacion`.
@@ -21,7 +21,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 | # | Bloque | Estado | Quién |
 |---|---|---|---|
 | 1 | ~~POL-18 gobernanza~~ | ✅ **mergeado** (PR #7, firma de Vlad 24-ago) — reglas vigentes | Watson |
-| 2 | **11.4.b** `LIVE` a variable de entorno + cierre del entorno dev | ⏳ prompt entregado, sin despachar | ejecutor Opus |
+| 2 | ~~11.4.b~~ `LIVE` a variable de entorno | ✅ **hecha y verificada** (ver entrada abajo) | ejecutor Opus |
 | 3 | **11.5** etiquetas + queries de arreglo + **re-estampar baseline** | ⏳ prompt entregado, sin despachar — **FRONTERA: firma de Vlad** | ejecutor Opus |
 | 4 | **11.6** auditoría adversarial del PR completo de POL-11 | ⧗ pendiente | **auditor en chat aparte** |
 | 5 | POL-9 → POL-6 → POL-7 → POL-8 → POL-10.B | ⧗ pendiente | según `tasks.md` |
@@ -69,6 +69,20 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 **Aporte de vuelta al método (MC SFE).** Polaris instancia el Tier 1 de forma **métrica** (no-regresión numérica) frente al Tier 1 **estructural** de Consola SOS (estampas de versión, cobertura enum→emisor). Segunda instanciación del mismo pilar con mecanismo distinto — evidencia de que la cadencia generaliza y su implementación depende del dominio.
 
 **Qué sigue.** Revisión del diff por Vlad → merge (frontera) → despachar 11.4.b.
+
+### [2026-08-24] POL-11 · 11.4.b — `LIVE` como variable de entorno
+
+**Despacho.** Agente efímero (ejecutor Opus 5) lanzado por Watson desde el chat. Duración 12m 56s · 60 tool calls · **145.510 tokens** de la sesión del agente.
+
+**Qué hizo.** `LIVE` sale de `env.LIVE` vía `isLive()` con lista blanca de un solo valor: solo la cadena `"true"` enciende; ausencia, `"false"`, `"1"` o basura caen en `false` (resuelve la trampa de que en JS `"false"` es truthy). `vars.LIVE="false"` declarado en prod **y** en `env.dev`. Plantillas `.dev.vars.v1/.v2.example` versionadas, reales al `.gitignore`. `WORKFLOW.md` §10 documenta el flujo dev-antes-de-prod y la regla de firma. 6 commits, HEAD del bloque `9cd26a1` (pre-rebase).
+
+**Verificación — PASÓ, con evidencia.** `wrangler dev` local con `LIVE=true`: `/api/triage` → **HTTP 200** citando `ER005 — Not synced with Google Ads` (primera vez que el índice de 261 chunks se ejercita por HTTP end-to-end, y valida de paso un artículo escrito en 11.3). Mismo binario sin `.dev.vars` → **503 demo_paused**, contrato idéntico. Prod y el dev público siguen en 503, **cero deploys** (dev sigue en `da8ac79a` del 21-ago). **Costo Vertex: USD 0,000211.**
+
+**Revisión de Watson (primera pasada).** Verificado de forma independiente: la SA key **nunca entró a git** (`git log --all --diff-filter=A` sobre `.dev.vars*` solo devuelve los `.example`; `.gitignore` cubre `.dev.vars.*` con excepción para `*.example`); `isLive()` implementa la lista blanca como se pidió y respeta booleanos reales por `--var`. El ejecutor **no cruzó ninguna frontera**: no desplegó, no mergeó, y reportó la SA key en claro en vez de callarla.
+
+**Desvío resuelto por Watson.** El ejecutor no pudo escribir en `tablero.md` porque la rama estaba 8 commits detrás de `main` y el archivo nació en POL-18 — decisión correcta la suya de no rebasar por su cuenta (un escritor por rama). Watson rebasó `feature/POL-11-kb-expansion` sobre `main` resolviendo 9 conflictos de `timeline.jsonl` por unión ordenada por timestamp (el archivo es append-only: la resolución correcta es conservar ambos lados, nunca elegir uno). Resultado: 73 eventos, cero duplicados.
+
+**Qué sigue.** 11.5 — etiquetas + queries de intención-de-arreglo + **re-estampar el baseline (FRONTERA: firma de Vlad)**.
 
 ### [2026-08-21] POL-11 · 11.4 — Saneamiento del índice + re-embed
 
