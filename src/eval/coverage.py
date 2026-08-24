@@ -15,30 +15,15 @@ ni modifica el índice: solo lo mide.
 from __future__ import annotations
 
 import argparse
-import json
 import re
 from collections import Counter
-from pathlib import Path
 
 import numpy as np
 
 from src.eval.embed_cache import get_embedding, get_embeddings_batch
 from src.eval.kb_index import KB_DIR, kb_index_hash, load_kb_chunks
-from src.eval.run import _normalizar
+from src.eval.run import _normalizar, cargar_corpus
 
-CORPUS_PATH = Path(__file__).resolve().parent / "corpus" / "corpus.jsonl"
-
-
-def cargar_corpus_para_cobertura(path: Path = CORPUS_PATH) -> list[dict]:
-    """Lee el corpus completo, incluidos los casos `post_baseline`.
-
-    Deliberadamente NO usa `run.cargar_corpus()`: ese loader aborta ante casos
-    `post_baseline` porque el REPORTE de métricas debe separarlos en una sección
-    aparte (deuda declarada en kb-expansion.md §5, a implementar en 11.5). La
-    cobertura del índice no tiene ese problema — un chunk visto es un chunk visto,
-    venga la query del baseline o de después — así que aquí se leen todas.
-    """
-    return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 # queries escritas en 10.2 apuntando DELIBERADAMENTE a chunks huérfanos: la
 # cobertura que ellas aportan no es evidencia de salud de la KB (sería circular),
@@ -113,7 +98,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    corpus = cargar_corpus_para_cobertura()
+    # el corpus entero, incluidos los casos post_baseline: la cobertura del índice
+    # no distingue poblaciones — un chunk visto es un chunk visto, venga la query
+    # del baseline o de después. La separación solo importa para PROMEDIAR métricas.
+    corpus = cargar_corpus()
     if args.corpus_subset == "organico":
         corpus = [f for f in corpus if f["id"] not in QUERIES_DIRIGIDAS]
     elif args.corpus_subset in ("discovery", "manual"):
