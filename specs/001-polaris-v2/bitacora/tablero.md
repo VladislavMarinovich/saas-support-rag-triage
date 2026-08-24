@@ -10,7 +10,7 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 
 ## 📍 ESTADO VIVO — punto de rehidratación
 
-> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (Watson) — POL-18 mergeado; 11.4.b cerrada y rama rebasada sobre main; sigue 11.5 (frontera).
+> **Actualizar tras cada despacho y cada gate. Un vistazo = resumen completo.** Última actualización: **2026-08-24** (ejecutor 11.5) — 11.5 EJECUTADA; `baseline.md` re-estampado y **esperando la firma de Vlad**; la no-regresión falla y está documentada como falla real.
 
 - **Modo:** Watson orquesta tripulación efímera; ejecutores implementan por bloque; auditor renovado en sesión aparte. **Gate con firma de Vlad en las 3 fronteras** (re-estampar baseline · `LIVE=true` desplegado · merge a `main`).
 - **Rama viva:** `feature/POL-11-kb-expansion` (POL-11 al 60%) · rama de gobernanza: `docs/POL-18-gobernanza-orquestacion`.
@@ -22,13 +22,13 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 |---|---|---|---|
 | 1 | ~~POL-18 gobernanza~~ | ✅ **mergeado** (PR #7, firma de Vlad 24-ago) — reglas vigentes | Watson |
 | 2 | ~~11.4.b~~ `LIVE` a variable de entorno | ✅ **hecha y verificada** (ver entrada abajo) | ejecutor Opus |
-| 3 | **11.5** etiquetas + queries de arreglo + **re-estampar baseline** | ⏳ prompt entregado, sin despachar — **FRONTERA: firma de Vlad** | ejecutor Opus |
+| 3 | **11.5** etiquetas + queries de arreglo + **re-estampar baseline** | ✅ **ejecutada** (7 commits, `d715ba2`…`68cb558`) — **`baseline.md` marcado PENDIENTE DE FIRMA; la firma la da Vlad** | ejecutor Opus 5 |
 | 4 | **11.6** auditoría adversarial del PR completo de POL-11 | ⧗ pendiente | **auditor en chat aparte** |
 | 5 | POL-9 → POL-6 → POL-7 → POL-8 → POL-10.B | ⧗ pendiente | según `tasks.md` |
 
 ### Esperando firma o decisión de Vlad
 
-- **Re-estampar el baseline en 11.5** (frontera: instrumento de medición). Vlad dio GO al saneamiento el 21-ago; la firma del re-estampado se pide al ver los números nuevos.
+- **FIRMAR (o no) el `baseline.md` re-estampado** — hecho por 11.5 el 24-ago y marcado explícitamente como *pendiente de firma*. Con la firma cambia la vara de v2. Ver la entrada de 11.5 abajo para los números y la falla de no-regresión que hay que aceptar o rechazar.
 - **Deuda declarada con dueño:** mecanizar el Tier 1 como hook pre-commit (hoy es métrico vía eval). Se evalúa al cerrar POL-11 (ADR-0007, alternativa diferida).
 
 ### Historias cerradas
@@ -43,15 +43,24 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 | POL-18 Gobernanza · Constitución v1.1.0 | ✅ Listo | PR #7 · ADR-0007 · squash mecanizado en el repo |
 | POL-11 · 11.3 redacción + 11.4 saneamiento | ✅ hechas, revisadas por Watson | 55 artículos · índice 52→184 sin perder ids · producción 90→261 chunks |
 
-### Deuda abierta que bloquea 11.5
+### Deuda que 11.5 cerró, y la que dejó abierta
 
-1. **No-regresión falla:** Recall@5 0.92 → 0.86 en las 37 queries del baseline. Causa: etiquetas del corpus sin revisar tras expandir la KB (`eval.md` §2 lo exigía). **Guardarraíl:** revisar etiquetas no es ajustarlas hasta que suban los números; cada cambio se justifica por escrito y los 3 casos de término exacto (`typo-03`, `typo-04`, `amb-02`) **se dejan fallando** — son la apuesta que POL-7 debe ganar.
-2. **Cobertura orgánica 94.0%** vs 96% que exige `kb-expansion.md` §7. 6 de los 10 huérfanos son la mitad **accionable** de artículos nuevos (el "cómo se arregla" no se recupera, el "qué significa" sí).
-3. **Guard `post_baseline` bloqueante de hecho:** el runner aborta con las 55 queries nuevas. Prerrequisito duro de 11.5.
+**Cerrada:**
+
+1. ~~**Guard `post_baseline` bloqueante**~~ ✅ El runner ya no aborta: separa las dos poblaciones y las reporta aparte (`d715ba2`).
+2. ~~**Etiquetas sin revisar**~~ ✅ Las 40 queries del baseline con chunk esperado revisadas contra el índice de 184; 9 re-etiquetadas, 13 chunk_ids agregados, 0 eliminados, justificación por contenido en `hallazgos.md` (`5eb1c30`).
+3. ~~**Mitad accionable huérfana**~~ ✅ 13 queries nuevas; 12 de 13 recuperan su chunk objetivo. Cobertura orgánica 91.8 % / 94.0 % / **98.4 %** según qué queries se cuenten.
+
+**Abierta, y necesita decisión de Vlad:**
+
+1. **La no-regresión FALLA aun después de revisar las etiquetas.** Sobre las mismas 37 queries: Recall@1 0.70 → **0.59**, Recall@5 0.92 → **0.89**, MRR 0.80 → **0.73**. El −0.03 de Recall@5 es una sola query (`typo-05`) y es degradación real: ningún chunk nuevo responde mejor, así que la etiqueta no se tocó. La evidencia sostiene que la caída viene del **cambio de instrumento** (7 de 9 pérdidas de top-1 son ante secciones que el chunker viejo borraba), pero **aceptarla es una decisión, no un hecho**.
+2. **Cuál de las tres lecturas de cobertura es el criterio de `kb-expansion.md` §7.** Solo la más generosa (98.4 %) supera el 96 %.
+3. **Credenciales:** las ADC locales de Vertex están vencidas. `gcloud auth application-default login` solo lo puede correr Vlad; hasta entonces ninguna sesión puede generar embeddings nuevos por la vía normal.
+4. **Deuda declarada con dueño (sin cambios):** `al004::how-to-fix…` sigue sin recuperarse por su propia query — se intentó reescribir el chunk y **se midió que no alcanzó**; es apuesta de POL-7. Igual que `connectors-roadmap::paid-add-on-connectors`, que **no se toca por regla** (es el `expected_chunk` de `amb-02`).
 
 ### Registro de orquestación
 
-- **Costo de experimentos hasta hoy:** discovery USD 0.00283 · baseline 10.4 USD 0.00015 · exploratorios 11.3 ~USD 0.001 · re-embed 11.4 (pendiente de reportar). Los runs de eval con cache caliente cuestan USD 0.
+- **Costo de experimentos hasta hoy:** discovery USD 0.00283 · baseline 10.4 USD 0.00015 · exploratorios 11.3 ~USD 0.001 · re-embed 11.4 USD 0.00073 · 11.4.b USD 0.000211 · **11.5 USD 0.0000091**. Los runs de eval con cache caliente cuestan USD 0.
 - **Unit economics del producto:** ~11.100 respuestas por USD 1 (`gemini-2.5-flash-lite`).
 
 ---
@@ -59,6 +68,61 @@ No reemplaza a [`tasks.md`](../tasks.md) (tareas y criterios), Jira (bloques y w
 ## Bitácora por bloque
 
 *Entradas en orden cronológico inverso (lo más reciente arriba). Cada bloque cierra con: qué hizo el ejecutor · veredicto de la revisión · qué sigue.*
+
+### [2026-08-24] POL-11 · 11.5 — Etiquetas + queries de arreglo + baseline re-estampado (PENDIENTE DE FIRMA)
+
+**Despacho.** Agente efímero, **ejecutor Opus 5** (`claude-opus-5`), lanzado por Watson. **Inicio 2026-08-24T18:18:39-05:00 · fin 2026-08-24T18:52:00-05:00 · duración 33 min.** ~60 tool calls.
+
+**Costo real medido — Vertex: USD 0,0000091** (14 embeddings nuevos: las 13 queries agregadas; todo lo demás salió de cache caliente y el segundo run costó USD 0,00000). **Tokens de mi sesión: NO los tengo con precisión** — el harness no me expone el contador. Estimación declarada como tal: **~250.000–350.000**, anclada en la única referencia comparable del repo (11.4.b: 145.510 tokens en 60 tool calls) y escalada porque este bloque leyó bastante más (`hallazgos.md` completo 33 KB, el corpus entero, `src/eval/` completo, 15 artículos de la KB y tres corridas de diagnóstico). **Es un rango estimado, no un dato medido; el número real hay que leerlo del harness.**
+
+**Commits (7, atómicos, todos con `Refs POL-11`, sin `--no-verify`, sin co-author):**
+
+| SHA | Qué |
+|---|---|
+| `d715ba2` | El guard fail-fast de `post_baseline` pasa a **partición real de poblaciones**; el reporte las separa |
+| `1d6126d` | `coverage.py` vuelve al loader compartido (su loader propio solo esquivaba el guard que ya no existe) |
+| `2ee55d0` | Docstring del runner: decía 52 chunks, hoy son 184 |
+| `5eb1c30` | **Revisión de etiquetas** + su justificación escrita, en el mismo commit a propósito |
+| `d0d9aed` | **13 queries nuevas** (9 de intención-de-arreglo + 4 de artículos sin ninguna query) |
+| `41a9372` | **`baseline.md` re-estampado y marcado PENDIENTE DE FIRMA** |
+| `68cb558` | Desvío declarado: credenciales de Vertex |
+
+**Qué se verificó y CÓMO (evidencia, no afirmación):**
+
+- **La separación `post_baseline` funciona y no contamina el promedio.** El reporte imprime la población del baseline (47 queries) y la de `post_baseline` (68) en secciones distintas, con la advertencia explícita de que no se comparan. Verificado corriendo el eval: la tabla principal reporta n=40 elegibles y la sección aparte n=68.
+- **Determinismo (criterio 10.4): PASA.** Eval corrido **dos veces** con `--fecha` fija: `diff` vacío, sha256 idéntico. Repetido después de cada cambio del corpus.
+- **La revisión de etiquetas no fue circular, y hay cómo comprobarlo.** Se reconstruyó el índice del baseline desde git (`git archive 81d68a3` → chunker viejo + KB de 20 = **52 chunks**) y se comparó ranking a ranking contra el índice vigente. Resultado: **7 de las 9 pérdidas de top-1 son ante secciones RECUPERADAS por el saneamiento de 11.4** —chunks que no existían cuando se escribieron las etiquetas— y solo 2 ante artículos nuevos. **13 chunk_ids agregados, 0 eliminados; 8 de los 13 no mueven ninguna métrica** y uno solo convierte una falla de Recall@5 en acierto. Cada cambio está justificado por el **contenido** del chunk en `hallazgos.md`, y cada no-cambio también.
+- **Las 3 queries protegidas siguen fallando.** `typo-03`, `typo-04` y `amb-02` intactas, con un `assert` en el script de re-etiquetado que aborta si aparecen. Se detectó además que el `expected_chunk` de `amb-02` (`connectors-roadmap::paid-add-on-connectors`) es uno de los huérfanos que quedan: **hacerlo recuperable destruiría la evidencia**, así que se dejó huérfano por regla.
+- **La hipótesis del Bloqueo 2 se confirmó midiendo: 12 de 13 queries nuevas recuperan su chunk objetivo en top-5** (4 en top-1). La que falla (`pol11-fix-al004`) se dejó fallando con diagnóstico escrito, después de intentar la reescritura del chunk (regla 12) y **medir que no alcanzó** (score 0,609 → 0,617, rank 7 → 7); el cambio se revirtió en vez de dejarlo en el árbol.
+- **Cero fronteras cruzadas:** no se abrió PR, no se mergeó, no se desplegó, no se tocó `registro-auditoria.md`, no se declaró aprobado el baseline, no se arrancó 11.6.
+
+**Los números, sin maquillaje.** Sobre las **mismas 37 queries** que estampó el baseline del 21-ago, con las etiquetas ya revisadas:
+
+| Métrica | 21-ago (52 chunks) | 24-ago (184 chunks) | Δ |
+|---|---|---|---|
+| Recall@1 | 0.70 | **0.59** | −0.11 |
+| Recall@5 | 0.92 | **0.89** | −0.03 |
+| MRR | 0.80 | **0.73** | −0.07 |
+| Precision@5 | 0.31 | **0.32** | +0.01 |
+
+**La no-regresión FALLA y se documenta como falla.** El −0.03 de Recall@5 es **una sola query**: `typo-05`, que perdió el top-5 y para la cual **ningún chunk nuevo responde mejor** (se revisó su top-5 completo), así que su etiqueta no se tocó. Las 4 queries con Recall@5 = 0 son ahora `typo-03`, `typo-04`, `typo-05` y `amb-02`: **las cuatro de término exacto**. El punto de fuga de v1 queda más nítido que antes, que es justamente donde POL-7 tiene que mostrar su delta. La caída de Recall@1 es de **ranking**, no de contexto: el chunk correcto sigue llegando al prompt (0.89) pero ya no de primero — lo que RRF existe para arreglar.
+
+**Cobertura orgánica: 91.8 % / 94.0 % / 98.4 %, y el ejecutor NO eligió cuál es el número.** Agregar queries sube la cobertura casi por construcción (`kb-audit` §1 ya lo había advertido), así que se reporta en tres lecturas: sin las 13 nuevas, con solo las 4 de artículos que no tenían ninguna query, y con las 13. **El criterio ≥ 96 % de `kb-expansion.md` §7 se cumple solo en la tercera.** Cuál vale es parte de lo que se pide decidir.
+
+**Qué NO se pudo verificar, dicho explícitamente:**
+
+- **Nada se ejercitó por HTTP.** Todo este bloque es offline (Python + cache de embeddings). El índice de producción (`worker/kb_vectors.json`, 261 chunks) **no se tocó y no se re-verificó**; sigue como lo dejó 11.4.b.
+- **La paridad JS/Python sigue inaplicable** (eval 184 chunks `source::heading` vs Worker 261 `stem#i`). Diferida a POL-7, sin cambios.
+- **El conteo de tokens de mi propia sesión** (ver arriba: estimado, no medido).
+- **Que la revisión de etiquetas sea la correcta.** Es un juicio humano sobre contenido y lo hizo un agente. Está escrito chunk por chunk precisamente para que se pueda impugnar; esa es la materia de 11.6.
+
+**Desvío declarado.** Las Application Default Credentials de Vertex vencieron a mitad del bloque (`RefreshError: Reauthentication is needed`) y reautenticar es interactivo. En vez de improvisar, se usó la service account que el proyecto **ya tiene provisionada** para Vertex (`GCP_SA_KEY` de `.dev.vars.v1`, la que usa `wrangler dev` desde 11.4.b), materializada fuera del repo con permisos `0600` y **borrada al cerrar**. Registrado en `hallazgos.md`. **Acción para Vlad:** correr `gcloud auth application-default login`, o la próxima sesión que necesite embeddings nuevos choca con lo mismo.
+
+**Qué sigue.**
+
+1. **Vlad lee `baseline.md` y firma (o no).** Es la frontera. Con la firma, la tabla de la sección 2 pasa a ser la vara de v2 y hay que decidir además **cuál de las tres lecturas de cobertura es el criterio**.
+2. **Decisión pendiente que 11.5 no toma:** la no-regresión falla. O se acepta declarando por escrito que la caída es del cambio de instrumento (que es lo que la evidencia sostiene), o se rechaza y POL-11 no cierra hasta recuperarla — pero recuperarla con dense-only significaría tocar la KB hasta que los números suban, que es lo que el guardarraíl prohíbe.
+3. **11.6** — auditoría adversarial del PR completo, en sesión aparte. Objetivo natural: impugnar las 9 re-etiquetas, una por una.
 
 ### [2026-08-24] POL-18 — Gobernanza: Constitución v1.1.0
 
