@@ -151,6 +151,13 @@ Ver Constitution Principio VII.
 - [ ] Eval framework corrió y confirma que no hay regresión (para cambios de retrieval/prompt/modelo).
 - [ ] El issue en Jira quedó en el estado correcto (Verificar o Actuar).
 
-## 10. Contacto
+## 10. Probar en dev antes de prod
+
+1. `cp .dev.vars.v1.example .dev.vars.v1` y completar `GCP_SA_KEY` y `TURNSTILE_SECRET` (para pruebas locales sirve la clave de test de Turnstile `1x0000000000000000000000000000000AA`). Los `.dev.vars*` reales están en `.gitignore`.
+2. `npx wrangler dev --env-file .dev.vars.v1` levanta el Worker en `127.0.0.1` con `LIVE=true`. Ahí el endpoint está vivo y llama a Vertex de verdad: el gasto lo dispara solo quien corre el comando, no internet. Para el perfil v2, el mismo comando con `.dev.vars.v2`.
+3. **Ningún entorno desplegado lleva `LIVE=true` sin firma de Vlad.** Producción y el dev de `workers.dev` van en `"LIVE": "false"` en `wrangler.jsonc`, y la URL de `workers.dev` es pública y sin auth — encenderla le abre el crédito de Vertex a cualquiera. Es una de las tres fronteras de la Constitución v1.1.0 (Principio IV).
+4. Recién con la prueba local en verde se despliega: `npx wrangler deploy --env dev` primero, `npx wrangler deploy` a producción después.
+
+## 11. Contacto
 
 Dudas o excepciones: Vlad Marinovich · <ops@marinovich.co>.
