@@ -390,3 +390,44 @@ Watson midió sobre el índice de **168** chunks (post-11.3). El saneamiento de 
 | MRR | 0.80 | — | **0.73** |
 
 **La no-regresión sigue fallando, y se documenta como falla, no se maquilla.** Recall@5 cae 0.03 (una query: `typo-05`), Recall@1 cae 0.11 y MRR cae 0.07. La revisión de etiquetas explica y corrige buena parte de la brecha, **no toda**. Las cuatro queries con Recall@5 = 0 son `typo-03`, `typo-04`, `typo-05` y `amb-02`: tres son la apuesta declarada de POL-7 y la cuarta (`typo-05`) es una degradación real que POL-7 también debería recuperar (es una query con términos exactos: "cambio plan").
+
+## [2026-08-24] POL-11 (11.5) — Queries de intención-de-arreglo: la hipótesis se confirma en 12 de 13
+
+**La hipótesis de Watson era correcta y ahora está medida.** Los artículos nuevos aportaron **una** query cada uno, escrita como *síntoma* ("los números son viejos, de hace dos días"), y el denso la resolvía contra el bloque explicativo del artículo. La mitad **accionable** —"cómo se arregla"— quedaba sin ninguna query que la ejercitara, y por eso aparecía como huérfana: el usuario recibía el diagnóstico sin el remedio.
+
+**13 queries nuevas** (`post_baseline: true`, `source: "pol11"`), con prefijos deliberadamente greppables para que cualquiera pueda excluirlas de una medición:
+
+- **`pol11-fix-*` (9)** — la variante de *intención de arreglo* de artículos que ya tenían su query de síntoma: AL004, DB003, DB005, PL001, PF005, PF006, roles (×2) y Meta Ads.
+- **`pol11-gap-*` (4)** — artículos que **no tenían ni una sola query en el corpus**: `alerts-create` y `dashboards-build`. Eso no es un hueco de KB sino de corpus, y viola la regla 10 del checklist (kb-audit §4) desde antes de POL-11.
+
+**Resultado, query por query: 12 de 13 recuperan su chunk objetivo en top-5** (4 en top-1). La única que falla es `pol11-fix-al004`.
+
+### El caso AL004: el problema ES el chunk, y el intento de arreglarlo FALLÓ (resultado negativo, reportado)
+
+`al004::how-to-fix-the-cause-and-resume-an-alert-after-al004` sigue en **rank 7** para su propia query de arreglo («how do i switch an alert back on after polaris turned it off»). Siguiendo la regla 12 se intentó la reescritura: se agregó al cuerpo de la sección una frase de puente con el vocabulario del usuario (*"To switch a paused alert back on, clear what made it fail first…"*).
+
+**Medición del intento: score 0.609 → 0.617, rank 7 → rank 7. No alcanzó.** El cambio se **revirtió** (`git checkout`) en vez de dejarlo: no logró su objetivo y habría dejado `worker/kb_vectors.json` desincronizado con `kb/` por cero beneficio medido. El experimento queda acá con su número, no en el árbol.
+
+**Diagnóstico de por qué falla, que es lo útil:** las dos mitades de AL004 no son separables por vocabulario. El bloque *"por qué se pausa sola"* contiene, por diseño de 11.3, el puente léxico *"If it looks like Polaris turned off your alert by itself"* — y absorbe cualquier query que mencione que Polaris apagó la alerta, incluida la de intención de arreglo. Además compite `al002::how-to-restore-delivery-after-al002`, que es el artículo correcto para el caso adyacente. **Esto es un problema de retrieval, no de contenido**, y es exactamente la clase de caso que POL-7 (BM25 sobre el token `AL004` + RRF) debería resolver. Se deja fallando con su evidencia en vez de seguir editando hasta que pase — la misma regla que protege a `typo-03/04` y `amb-02`.
+
+### Cobertura: tres lecturas, porque una sola sería deshonesta
+
+Agregar queries sube `kb_coverage_pct` casi por construcción, y `kb-audit.md` §1 ya había inventado el subconjunto "orgánico" precisamente para no medirse a sí mismo. Por eso el número se reporta **en tres lecturas**, sobre el mismo índice de 184 chunks (hash `11eef1a591ae`):
+
+| Lectura | n queries | `kb_coverage_pct` | huérfanos |
+|---|---|---|---|
+| **A.** orgánica sin ninguna de las 13 nuevas (la más conservadora) | 96 | **91.8 %** | 15 |
+| **B.** orgánica + las 4 `pol11-gap-*` (artículos que no tenían query) | 100 | **94.0 %** | 11 |
+| **C.** orgánica + las 13 (la que pide el encargo) | 109 | **98.4 %** | 3 |
+
+**El criterio de `kb-expansion.md` §7 (≥ 96 %) se cumple solo en la lectura C.** Se declara así, sin elegir por conveniencia. El criterio para distinguir una query legítima de una query circular fue: *¿existiría esta query si el chunk no existiera?* Las 13 pasan esa prueba (son intenciones de usuario reales, escritas desde el problema y no parafraseando el chunk), pero la prueba la aplicó quien las escribió — **cuál de las tres lecturas es EL número del criterio es decisión de Vlad / de la auditoría 11.6**, no de este ejecutor.
+
+### Los 3 huérfanos que quedan en la lectura C, y por qué dos de ellos NO se tocan
+
+- `al004::how-to-fix-the-cause-and-resume-an-alert-after-al004` — arriba. Deuda con dueño: POL-7.
+- `connectors-roadmap::paid-add-on-connectors` — **es el `expected_chunk` de `amb-02`**, una de las tres queries protegidas. Hacerlo recuperable haría pasar a `amb-02` y destruiría la evidencia central de la apuesta de BM25. No se toca **por regla**, no por descuido.
+- `connectors-roadmap::how-to-add-a-connector-you're-entitled-to` — el artículo ya tiene 3 queries (`man-02`, `man-03`, `amb-02`); agregarle una cuarta apuntada a una sección específica sería cazar huérfanos, no cubrir una intención faltante. Se deja huérfano y declarado.
+
+### Efecto colateral vigilado: el paisaje de imanes
+
+`chunk_dominance_top1_ratio` máximo = **5.5 %** (`alerts-not-firing::4.-alert-is-paused-or-misconfigured`, 6 veces top-1 sobre 109), cómodamente bajo el umbral de 10 % de ADR-0005. Le siguen `dashboards-not-loading::5.-try-a-hard-refresh` (3.7 %) y tres empatados en 2.8 %. Confirma el aviso de 11.4: los nuevos punteros del ranking son secciones recuperadas por el saneamiento, no artículos nuevos.
