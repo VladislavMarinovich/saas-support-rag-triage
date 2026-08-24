@@ -1,5 +1,8 @@
 <!-- Registro de hallazgos de ejecución Polaris v2. Append-only: cada entrada documenta findings, desvíos y decisiones tomadas durante una subtarea o Historia. Complementa timeline.jsonl (eventos con timestamp para minería de procesos) con el contexto humano que un JSON no captura. -->
 
+> ⚠️ **Nota de propiedad (Constitución v1.1.0, POL-18):** este archivo lo escriben el **ejecutor** y el **orquestador** (hallazgos técnicos y desvíos de cada subtarea). El **auditor adversarial** escribe en [`registro-auditoria.md`](registro-auditoria.md), y el hilo de orquestación vive en [`tablero.md`](tablero.md) — un escritor por archivo.
+
+
 # Polaris v2 — Registro de hallazgos
 
 **Formato de entrada:** `## [fecha] POL-X.Y — título corto`, seguido de: qué se encontró, qué se decidió, y si hubo desvío del plan (con causa). Cada entrada la escribe el agente ejecutor al cerrar la subtarea, antes del commit.
