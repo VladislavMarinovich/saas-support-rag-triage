@@ -1,0 +1,35 @@
+# Plantilla del perfil V1 para `wrangler dev` LOCAL. Copiala a `.dev.vars.v1` y
+# rellena los secretos. Los `.dev.vars*` reales estan en .gitignore; SOLO estos
+# `.example` se versionan.
+#
+# Que es esto: el unico lugar del proyecto donde LIVE puede valer "true".
+# `wrangler dev` levanta el Worker en tu maquina (127.0.0.1), no en internet, asi
+# que aca el endpoint en vivo no es una URL publica y el gasto de Vertex lo
+# dispara solo quien corre el comando. En cualquier entorno DESPLEGADO —
+# produccion y el dev de workers.dev — LIVE va en "false", y cambiarlo es una
+# frontera que requiere firma del owner (Constitucion v1.1.0, Principio IV).
+#
+# Uso:
+#   cp .dev.vars.v1.example .dev.vars.v1     # y completar los secretos
+#   npx wrangler dev --env-file .dev.vars.v1
+#
+# Perfil V1 = el Worker tal como sirve produccion hoy: dense-only, prompt v1,
+# sin cache, sin telemetria. Es la linea base contra la que se compara v2.
+
+# --- kill-switch ---
+LIVE=true
+
+# --- flags de v2 (plan.md §5) — todas apagadas en el perfil v1 ---
+V2_CANONICALIZE=false
+V2_HYBRID=false
+V2_MULTILINGUAL=false
+V2_MODE_CLIENTE=false
+TELEMETRY_ENABLED=false
+
+# --- secretos (NO los pegues en el .example) ---
+# JSON completo de la service account de GCP, en UNA sola linea.
+GCP_SA_KEY=
+# Secret key del widget Turnstile. Para pruebas locales sirve la clave de test
+# publica de Cloudflare 1x0000000000000000000000000000000AA, que aprueba
+# cualquier token; la real solo hace falta contra el widget real.
+TURNSTILE_SECRET=

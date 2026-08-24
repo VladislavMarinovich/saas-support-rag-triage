@@ -1,0 +1,35 @@
+# Plantilla del perfil V2 para `wrangler dev` LOCAL. Copiala a `.dev.vars.v2` y
+# rellena los secretos. Los `.dev.vars*` reales estan en .gitignore; SOLO estos
+# `.example` se versionan.
+#
+# Mismo contrato que `.dev.vars.v1.example`: LIVE="true" existe UNICAMENTE aca,
+# en un archivo local que solo lee `wrangler dev`. Ningun entorno desplegado lo
+# lleva sin firma del owner (Constitucion v1.1.0, frontera 2).
+#
+# Uso:
+#   cp .dev.vars.v2.example .dev.vars.v2      # y completar los secretos
+#   npx wrangler dev --env-file .dev.vars.v2
+#
+# Perfil V2 = el Worker con las features de v2 encendidas. Cambiar entre v1 y v2
+# es cambiar de archivo, no de codigo (plan.md §5): las dos versiones cohabitan
+# en el mismo Worker y el eval corre contra ambas para producir la tabla
+# comparativa de la Fase 8.
+
+# --- kill-switch ---
+LIVE=true
+
+# --- flags de v2 (plan.md §5) ---
+# TODAS en "false" a proposito: al 24-ago-2026 NINGUNA esta implementada
+# todavia. Se declaran igual para que el archivo sea el inventario de lo que
+# falta y para que encender una feature sea editar una linea aqui, no descubrir
+# como se llamaba la variable. Cada flag pasa a "true" en la subtarea que la
+# implementa, y solo despues de que el eval confirme no-regresion (Principio XII).
+V2_CANONICALIZE=false    # POL-6, Fase 4 — canonicalize + lookup en KV
+V2_HYBRID=false          # POL-7, Fase 5 — BM25 + RRF sobre el dense actual
+V2_MULTILINGUAL=false    # Fase 3 — deteccion de idioma + prompt bilingue
+V2_MODE_CLIENTE=false    # POL-9 / Fase 6 — prompt v2 en modo cliente
+TELEMETRY_ENABLED=false  # POL-8, Fase 7 — sink a BigQuery via waitUntil
+
+# --- secretos (NO los pegues en el .example) ---
+GCP_SA_KEY=
+TURNSTILE_SECRET=

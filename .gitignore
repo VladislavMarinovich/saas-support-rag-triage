@@ -10,7 +10,12 @@ __pycache__/
 docs/mapa-matematicas-polaris.md
 
 # Secretos que NUNCA deben commitearse
+# `.dev.vars*` cubre los perfiles por variante (.dev.vars.v1, .dev.vars.v2, …):
+# llevan GCP_SA_KEY en claro y son el unico lugar donde LIVE puede valer "true".
+# Las plantillas `.example` SI se versionan — son la documentacion del formato.
 .dev.vars
+.dev.vars.*
+!.dev.vars.*.example
 polaris-triage-demo-*.json
 *-service-account*.json
 *serviceaccount*.json
